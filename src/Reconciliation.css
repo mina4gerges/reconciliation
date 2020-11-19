@@ -1,15 +1,3 @@
-.panel {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-
-    -webkit-transition: all 0.8s cubic-bezier(0.3, 0.3, 0.1, 0.99);
-    -webkit-backface-visibility: hidden; /* avoid odd flicker */
-    -moz-transition: all 0.8s cubic-bezier(0.3, 0.3, 0.1, 0.99);
-    -o-transition: all 0.8s cubic-bezier(0.3, 0.3, 0.1, 0.99);
-    transition: all 0.8s cubic-bezier(0.3, 0.3, 0.1, 0.99);
-}
-
 .hide-left {
     -webkit-transform: translateX(-100%);
     -moz-transform: translateX(-100%);
@@ -50,30 +38,6 @@
     top: 5%;
 }
 
-.bottom {
-    bottom: 5%;
-}
-
-#intro h1, #intro h2 {
-    margin: 3% 0;
-}
-
-#intro h1 {
-    letter-spacing: 0.25em;
-}
-
-#intro a, #intro h4 {
-    color: #666666;
-}
-
-#ul_config li {
-    height: 2em;
-}
-
-#intro select {
-    height: 2em;
-}
-
 .column {
     height: 100%;
 
@@ -89,10 +53,6 @@
     padding: 5% 7.5%;
     width: 45%;
     right: 0;
-}
-
-.sub-blurb {
-    margin: 15% 0;
 }
 
 .sub-blurb p {
@@ -125,7 +85,7 @@
     border-bottom: 0.3em solid #f3f3f3;
     border-collapse: collapse;
     width: 100%;
-    height: 80%;
+    height: 100%;
 }
 
 .backdrop th {
@@ -184,10 +144,6 @@
     opacity: 1;
 }
 
-.keep {
-    margin-right: 0.3em;
-}
-
 .reject {
     margin-left: 0.3em;
 }
@@ -211,15 +167,13 @@
 
 .backdrop td, .item {
     width: 18%;
-    height: 2.5em;
-    padding: 0.6em 0.5em 0.4em 0.5em;
+    padding: 5px;
 
     -webkit-transition: background 0.8s;
     -moz-transition: background 0.8s;
     -o-transition: background 0.8s;
     transition: background 0.8s;
 }
-
 
 .diagnosis {
     width: 18%;
@@ -230,7 +184,6 @@
     -o-transition: background 0.8s;
     transition: background 0.8s;
 }
-
 
 .item, .diagnosis {
     position: absolute;
@@ -296,7 +249,6 @@
     z-index: 1; /* > 0 to be above the backdrop */
 }
 
-
 .third-col-anchor-hover {
     background: rgb(223, 243, 235);
     border-radius: 0.2em;
@@ -313,7 +265,6 @@
     content: "*";
     margin-right: 0.5em;
 }
-
 
 .difference {
     -webkit-transition: background 0.4s;
@@ -332,7 +283,6 @@
     -o-transition: all 0.4s;
     transition: all 0.4s;
 }
-
 
 .groups .label {
     color: #333333;
@@ -406,44 +356,6 @@
     transition: all 0.2s;
 }
 
-.show {
-    -webkit-transform: translateY(0);
-    -moz-transform: translateY(0);
-    -ms-transform: translateY(0);
-    -o-transform: translateY(0);
-
-    z-index: 500;
-    opacity: 1;
-}
-
-.close {
-    margin-top: 1em;
-    width: 5em;
-    float: right;
-}
-
-.options-panel {
-    background: #333333;
-    color: #999999;
-    font-size: 80%;
-
-    border-collapse: collapse;
-
-    position: absolute;
-    right: 0;
-    width: 97%;
-
-    border-bottom-left-radius: 0.2em;
-
-    opacity: 0;
-
-    -webkit-transform: translateY(-200%);
-    -moz-transform: translateY(-200%);
-    -ms-transform: translateY(-200%);
-    -o-transform: translateY(-200%);
-    transform: translateY(-200%);
-}
-
 .options-panel td:nth-child(odd) {
     padding: 0.25em 0 0.25em 2em;
 }
@@ -468,61 +380,6 @@
 
 .options-panel a:hover {
     color: #f0f0f0;
-}
-
-#review h1 {
-    display: inline;
-}
-
-#review table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-#review th {
-    padding: 0.5em 0.4em;
-    text-align: left;
-}
-
-#review .content th {
-    padding: 0.4em;
-}
-
-#review td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    height: 2.5em;
-    margin: 0;
-    padding: 0.5em 0;
-}
-
-#review .content {
-    position: absolute;
-    margin: 0 0 0 10%;
-}
-
-#review .content {
-    top: 25%;
-    width: 80%;
-}
-
-#review .content {
-    overflow-x: hidden;
-
-    top: 30%;
-    height: 55%;
-    width: 80%;
-}
-
-#review .item {
-    position: inherit;
-}
-
-#review .annotation {
-    margin-left: 2em;
 }
 
 .fields {
@@ -600,24 +457,6 @@
 
 .response .back::after {
     content: " ]";
-}
-
-.keyword {
-    font-weight: normal;
-}
-
-.annotation {
-    font-size: 80%;
-    font-style: italic;
-    font-weight: normal;
-}
-
-.bg-contrast-light {
-    background: #f0f0f0;
-}
-
-.bg-contrast-dark {
-    background: #e5e5e5;
 }
 
 .show {
