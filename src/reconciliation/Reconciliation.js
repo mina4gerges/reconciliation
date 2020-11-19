@@ -2,27 +2,14 @@ import React, { useEffect } from "react";
 
 import "../Reconciliation.css";
 
-import { index } from './index';
-
-const loadScript = url => {
-
-    let script = document.createElement("script")
-    script.type = "text/javascript";
-    script.async = false;
-    script.src = url;
-    document.getElementsByTagName("head")[0].appendChild(script);
-}
+import { DATASET_DEFAULT, init } from "./model";
+import { autoAnimateDefault, initController, versionDefault } from "./controller";
 
 const Reconciliation = () => {
+
     useEffect(() => {
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/jquery-1.7.1.min.js`);
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/jquery.transit.min.js`);
-        index();
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/utils.js`);
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/model.js`);
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/logger.js`);
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/controller.js`);
-        // loadScript(`${process.env.PUBLIC_URL}/js/reconciliation/index.js`);
+        init(DATASET_DEFAULT);
+        initController(false, versionDefault, autoAnimateDefault);
     }, []);
 
     return <div id="reconciliation" className="content-text">

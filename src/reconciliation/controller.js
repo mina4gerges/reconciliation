@@ -1,27 +1,5 @@
-// TODO: populate DOM with HTML strings for speed (less readable, though)
-
 import $ from 'jquery';
 
-////// hidden ////////////////////////////////////////////////////////////
-// pseudo constants //////////////////////////////////////////////////
-// import {
-//     DATA_DEMO_END_STATE,
-//     dump,
-//     EVENT_ANIMATION_SPEED_CHANGE,
-//     EVENT_CLICKED,
-//     EVENT_COLUMN_ACTION,
-//     // EVENT_DATASET_CHANGE,
-//     EVENT_DEMO_START,
-//     EVENT_LIST_ACCEPTED,
-//     EVENT_LIST_REJECTED,
-//     EVENT_LIST_UNDECIDED,
-//     EVENT_MODIFY_PANEL_START,
-//     EVENT_SCROLLED,
-//     EVENT_SIGNED_OFF,
-//     EVENT_STATE_CHANGE,
-//     itemString,
-//     log
-// } from "./logger";
 import {
     AFTER_ACTION_GRAYOUT,
     AFTER_ACTION_REMOVE,
@@ -32,12 +10,9 @@ import {
     ATTR_ROUTE,
     ATTR_SUBITEM,
     attributes,
-    dataset,
     DEFAULT_GROUP,
-    diagnoses,
     diagnosisSet,
     displayName,
-    drugClasses,
     drugClassSet,
     getGroupBy,
     getIdentical,
@@ -55,25 +30,20 @@ import {
     list2,
     multigroup,
     RECORDED_NAME,
-    setAccepted,
     setFilterOn,
     setGroupBy,
-    setRejected,
-    setUndecided,
     shadowsToItems,
     similar,
     unique1,
     unique2,
     viewDataModel,
 } from './model';
-// import {  setStorageItem } from './utils';
 
-let LIST_1_UNIQUE_INDEX = 0;
 let LIST_1_INDEX = 1;
-let LIST_IDENTICAL_INDEX = 2;
 let LIST_2_INDEX = 3;
 let LIST_2_UNIQUE_INDEX = 4;
-
+let LIST_1_UNIQUE_INDEX = 0;
+let LIST_IDENTICAL_INDEX = 2;
 /*
  * Keeps track of, for each state, how many rows are needed
  * Used to generate striped backdrop
@@ -81,16 +51,13 @@ let LIST_2_UNIQUE_INDEX = 4;
  * populated in calculatePositions
  */
 let NUM_ROWS = {};
-
 let NUM_COLUMNS = 5;
-
-let STATE_SEPARATE = 0;
-let STATE_IDENTICAL = 1;
+let NUM_STATES = 5;
 let STATE_UNIQUE = 2;
 let STATE_SIMILAR = 3;
 let STATE_COMPACT = 4;
-let NUM_STATES = 5;
-
+let STATE_SEPARATE = 0;
+let STATE_IDENTICAL = 1;
 let BASE_ANIMATION_DURATION = 800;
 let PANEL_DELAY = BASE_ANIMATION_DURATION * 2;
 let ANIMATION_SPEED_0 = "__ANIMATION_SPEED_0__";
@@ -99,9 +66,8 @@ let ANIMATION_SPEED_2 = "__ANIMATION_SPEED_2__";
 let ANIMATION_SPEED_3 = "__ANIMATION_SPEED_3__";
 let ANIMATION_SPEED_4 = "__ANIMATION_SPEED_4__";
 let ANIMATION_SPEED_5 = "__ANIMATION_SPEED_5__";
-let ANIMATION_SPEED_COEFFICIENTS = [0, 1.5, 1.25, 1, 0.75, 0.5];
 let CUSTOM_EASE_IN = "cubic-bezier(0.4, 0.2, 0.1, 0.9)";
-
+let ANIMATION_SPEED_COEFFICIENTS = [0, 1.5, 1.25, 1, 0.75, 0.5];
 // config - version
 let VERSION_FULL = "__VERSION_FULL__";
 let VERSION_BASELINE = "__VERSION_BASELINE__";
@@ -119,17 +85,12 @@ let NEUTRAL_GRAY = "#f0f0f0";
 let CONTRAST_GRAY = "#d9d6d0";
 
 // animation speed ///////////////////////////////////////////////////
-export let animationSpeed = 0;
-export let animationDuration = 0;
-export let animationDelay = 0;
+let animationSpeed = 0;
+let animationDuration = 0;
+let animationDelay = 0;
 export let toggleOnDelay = 0;
 export let toggleOffDelay = 0;
-
-// state /////////////////////////////////////////////////////////////
-export let editID = 0;
-
 export let versionDefault = VERSION_FULL;
-
 export let autoAnimateDefault = AUTO_ANIMATE_ON;
 
 let version = VERSION_FULL;
@@ -142,12 +103,90 @@ let $lastTouchedItem;
 
 let viewData = {};
 
-// methods ///////////////////////////////////////////////////////////
-// initialize data to display and populate interface
-// assumed model has already been initialized
-// dontRedraw indicates not to do a redraw (default is undefined)
-// version - version of interface to initialize
-// animate - whether to animate automatically, on compare lists, or jump to compact
+/*
+ * viewData:
+ * Information about what to display. Populated in model.viewData and
+ * in calculatePositions. Consists of:
+ *
+ *      // for each group, the ids (including shadows) in that group
+ *      groups: {
+ *          <group1name>: [id, id, ...],
+ *          <group2name>: [id, id, ...],
+ *          <group3name>: [id, id, ...],
+ *          ...
+ *      },
+ *
+ *      // keys to the groups array (in the order they should be accessed)
+ *      groupRank: [<group1name>, <group2name>, ...],
+ *
+ *      groupLengths: {
+ *          <group1>: {
+ *              // within this group, id -> identical items
+ *              // Note: is (one-way, i.e. if id1 identical to id2, only
+ *              //  one entry: {id1: [id1, id2]} present)
+ *              identicalMarker: {
+ *                  <id1>: [<id1>, <identicalIds...>],
+ *                  ...
+ *              },
+ *
+ *              // within this group, for each state, the height of each row
+ *              // e.g. [1,2,1] means first set takes 1 row, next (maybe a
+ *              //  similar set) takes 2, last takes 1.
+ *              //  populated in calculatePositions, used for row coloring
+ *              rowSetLen: {
+ *                  <STATE>: [<set1length>, <set2length>, ...],
+ *                  ...
+ *              },
+ *
+ *              // for each state, what row this group starts on
+ *              // populated in calculatePositions
+ *              startRow: {
+ *                  <STATE>: <start row for STATE>,
+ *                  ...
+ *              },
+ *
+ *              // within this group, the ids (including shadows) that are
+ *              // unique1 at the end. Used to help figure out the size of
+ *              // the background block coloring in STATE_COMPACT as well as
+ *              // for column actions
+ *              unique1: [id, id, ...],
+ *
+ *              // same as above, but for unique2
+ *              unique2: [id, id, ...]
+ *          },  // end of <group1>
+ *          ...
+ *      } // end of groupLengths
+ *
+ *      // function that retrieves all ids as a single list (in rank order)
+ *      getAll()
+ */
+
+let hoverSet = {};
+
+// diagnoses that are being hovered (due to mouseover an item)
+let hoverDiagnosisSet = [];
+
+// let groups = [];
+
+let state = STATE_SEPARATE;
+
+let showPatientTab = false;
+
+/*
+ * Stores item locations for different states - used during animateItem
+ * e.g. positions[id][state] -> {
+ *     'row': <row of "id" in "STATE">,
+ *     'col': <column of "id" in "STATE">}
+ */
+let positions = {};
+
+let linkAction = {};
+
+let displayDetails = true;
+
+// for debugging - whether to print item information on hover
+let printHover = false;
+
 export function initController(dontRedraw, interfaceVersion, animate) {
     // TODO might need string translation?
     version = interfaceVersion;
@@ -238,122 +277,13 @@ export function toggleItem(tempItem, delay, show) {
     }
 }
 
-// internal state ////////////////////////////////////////////////////
-
-/*
- * viewData:
- * Information about what to display. Populated in model.viewData and
- * in calculatePositions. Consists of:
- *
- *      // for each group, the ids (including shadows) in that group
- *      groups: {
- *          <group1name>: [id, id, ...],
- *          <group2name>: [id, id, ...],
- *          <group3name>: [id, id, ...],
- *          ...
- *      },
- *
- *      // keys to the groups array (in the order they should be accessed)
- *      groupRank: [<group1name>, <group2name>, ...],
- *
- *      groupLengths: {
- *          <group1>: {
- *              // within this group, id -> identical items
- *              // Note: is (one-way, i.e. if id1 identical to id2, only
- *              //  one entry: {id1: [id1, id2]} present)
- *              identicalMarker: {
- *                  <id1>: [<id1>, <identicalIds...>],
- *                  ...
- *              },
- *
- *              // within this group, for each state, the height of each row
- *              // e.g. [1,2,1] means first set takes 1 row, next (maybe a
- *              //  similar set) takes 2, last takes 1.
- *              //  populated in calculatePositions, used for row coloring
- *              rowSetLen: {
- *                  <STATE>: [<set1length>, <set2length>, ...],
- *                  ...
- *              },
- *
- *              // for each state, what row this group starts on
- *              // populated in calculatePositions
- *              startRow: {
- *                  <STATE>: <start row for STATE>,
- *                  ...
- *              },
- *
- *              // within this group, the ids (including shadows) that are
- *              // unique1 at the end. Used to help figure out the size of
- *              // the background block coloring in STATE_COMPACT as well as
- *              // for column actions
- *              unique1: [id, id, ...],
- *
- *              // same as above, but for unique2
- *              unique2: [id, id, ...]
- *          },  // end of <group1>
- *          ...
- *      } // end of groupLengths
- *
- *      // function that retrieves all ids as a single list (in rank order)
- *      getAll()
- */
-
-let hoverSet = {};
-
-// diagnoses that are being hovered (due to mouseover an item)
-let hoverDiagnosisSet = [];
-
-// let groups = [];
-
-let state = STATE_SEPARATE;
-
-let showPatientTab = false;
-
-/*
- * Stores item locations for different states - used during animateItem
- * e.g. positions[id][state] -> {
- *     'row': <row of "id" in "STATE">,
- *     'col': <column of "id" in "STATE">}
- */
-let positions = {};
-
-let linkAction = {};
-
-let displayDetails = true;
-
-// for debugging - whether to print item information on hover
-let printHover = false;
-
-// initialization ////////////////////////////////////////////////////
-export function resetState() {
-    state = STATE_SEPARATE;
-    viewData = {};
-    hoverSet = {};
-
-    // groups = [];
-
-    positions = {};
-
-    linkAction = {};
-}
-
-// export function changeDataset(dataset) {
-//     init(dataset);
-//     resetState();
-//     initController();
-//
-//     log(EVENT_DATASET_CHANGE, dataset);
-// }
-
-export function prepareDOM() {
+function prepareDOM() {
     populateBackdrop($(".backdrop-header"), $(".backdrop-body"));
     populateItems($(".items"));
 
     // start shadowing
     $(".shadow").hide();
     $(".conditional").hide();
-
-
 
     // remove jquery mobile loading div...
     // $(".ui-loader").remove();
@@ -367,7 +297,6 @@ export function prepareDOM() {
 
     // create actual objects
 
-
     // TODO refactor? Diagnoses -> Control column?
     // if (version === VERSION_THREE_COLUMN) {
     //     populateThirdAnchorColumn($(".diagnoses"), diagnoses);
@@ -376,18 +305,14 @@ export function prepareDOM() {
     // }
     // TODO: faster / neater to wrap all shadows in a separate div?
 
-
-
     // hide unused column headers; avoid unexpected behavior
     // $(".backdrop th:nth-child(odd) .col-header").hide();
-
 
     // TODO might be removed
     // indicate current config
     // $("select[name='dataset']").val(dataset);
-    // $("#reconciliation .annotation").text("[ case : " + dataset.toLowerCase().replace(/_/g, " ").replace(/dataset/, "").trim() + " ]");
-    // $("select[name='version']").val(version);
-    // $("select[name='autoAnimate']").val(autoAnimate);
+    // $("#reconciliation .annotation").text("[ case : " + dataset.toLowerCase().replace(/_/g, " ").replace(/dataset/,
+    // "").trim() + " ]"); $("select[name='version']").val(version); $("select[name='autoAnimate']").val(autoAnimate);
     // $("select[name='speed']").val(animationSpeed);
 
     // initialize the number of drugs to act on
@@ -395,7 +320,7 @@ export function prepareDOM() {
 }
 
 // prepare information necessary for state transitions
-export function prepareTransitions() {
+function prepareTransitions() {
     // prepare positions data structure
     calculatePositions();
 
@@ -418,7 +343,7 @@ function prepareHandlers() {
         {
             // left swipe = left click
             "swipeleft": function () {
-                // mouse out to disable touchstart's hover mimicking
+                // mouse out to disable touch start's hover mimicking
                 $(this).mouseout();
                 itemChange($(this), this.id, "left");
             },
@@ -474,7 +399,7 @@ function prepareHandlers() {
 
             $(this).addClass("third-col-anchor-hover");
 
-            // de-emphasize all items - Note: needs to be changed if allowing multigrouping...
+            // de-emphasize all items - Note: needs to be changed if allowing multi grouping...
             $(".item").css("opacity", "0.0");
 
             // hover appropriate item(s) - TODO: does not support with shadows
@@ -484,7 +409,7 @@ function prepareHandlers() {
                 diagnosisHoverItem(hoverID, true, false);
             }
 
-            hoverScrolltips(id, true);
+            hoverScrollTips(id, true);
 
         }).mouseout(function () {
             let id = this.id;
@@ -492,7 +417,7 @@ function prepareHandlers() {
 
             $(this).removeClass("third-col-anchor-hover");
 
-            // revert de-emphasization
+            // revert de-emphasizing
             $(".item").css("opacity", "1.0");
 
             // hover appropriate item(s) - TODO: does not support with shadows
@@ -502,7 +427,7 @@ function prepareHandlers() {
                 diagnosisHoverItem(hoverID, false, false);
             }
 
-            hoverScrolltips(id, false);
+            hoverScrollTips(id, false);
         });
     }
 
@@ -517,7 +442,7 @@ function prepareHandlers() {
 
             $(this).addClass("third-col-anchor-hover");
 
-            // de-emphasize all items - Note: needs to be changed if allowing multigrouping...
+            // de-emphasize all items - Note: needs to be changed if allowing multi grouping...
             $(".item").css("opacity", "0.0");
 
             // hover appropriate item(s) - TODO: does not support with shadows
@@ -528,7 +453,7 @@ function prepareHandlers() {
             }
 
             // TODO
-            hoverScrolltips(id, true);
+            hoverScrollTips(id, true);
 
         }).mouseout(function () {
             let id = this.id;
@@ -536,7 +461,7 @@ function prepareHandlers() {
 
             $(this).removeClass("third-col-anchor-hover");
 
-            // revert de-emphasization
+            // revert de-emphasizing
             $(".item").css("opacity", "1.0");
 
             // hover appropriate item(s) - TODO: does not support with shadows
@@ -546,7 +471,7 @@ function prepareHandlers() {
                 diagnosisHoverItem(hoverID, false, false);
             }
 
-            hoverScrolltips(id, false);
+            hoverScrollTips(id, false);
         });
     }
     // basic controls
@@ -631,9 +556,9 @@ function prepareHandlers() {
         toggleOptionsPanel($(this), true);
     });
 
-    // when clicked, cycles the current groupby layout used
-    $(".cycle_groupby").click(function () {
-        // log(EVENT_CLICKED, "cycle_groupby");
+    // when clicked, cycles the current groupBy layout used
+    $(".cycle_groupBy").click(function () {
+        // log(EVENT_CLICKED, "cycle_groupBy");
         updateGroupBy($(this).attr("value"));
     });
 
@@ -663,7 +588,7 @@ function prepareHandlers() {
     });
 
     $("input[name='multigroup']").click(function () {
-        // log(EVENT_CLICKED, "multigroup");
+        // log(EVENT_CLICKED, "multi group");
 
         multigroup = this.checked;
 
@@ -715,8 +640,8 @@ function prepareHandlers() {
         changeState(STATE_COMPACT);
     });
 
-    $(".grayout").click(function () {
-        // log(EVENT_CLICKED, "grayout");
+    $(".gray-out").click(function () {
+        // log(EVENT_CLICKED, "gray-out");
         if (!$(this).hasClass("active")) {
             $(".remove").removeClass("active");
             $(this).addClass("active");
@@ -729,7 +654,7 @@ function prepareHandlers() {
     $(".remove").click(function () {
         // log(EVENT_CLICKED, "remove");
         if (!$(this).hasClass("active")) {
-            $(".grayout").removeClass("active");
+            $(".gray-out").removeClass("active");
             $(this).addClass("active");
 
             afterAction = AFTER_ACTION_REMOVE;
@@ -787,7 +712,7 @@ function prepareHandlers() {
     });
 
     // hidden controls (shortcuts)
-    $(window).unbind("keydown")// for some reason, multiple keydowns firing, remove previous ones
+    $(window).unbind("keydown")// for some reason, multiple key downs firing, remove previous ones
         .keydown(function (event) {
 
             if (!$("input[name='filterOn']").is(':focus') &&
@@ -832,7 +757,7 @@ function prepareHandlers() {
                         break;
                     case 77:
                         // the 'm' key
-                        // toggle multigroup
+                        // toggle multi group
 
                         // toggle controls
                         if ($("#chk_mg").attr("checked")) {
@@ -896,10 +821,10 @@ function prepareHandlers() {
 
         let st = $(this).scrollTop();
         if (st > lastScrollTop) {
-            // downscroll code
+            // downScroll code
             // log(EVENT_SCROLLED, "down");
         } else {
-            // upscroll code
+            // upScroll code
             // log(EVENT_SCROLLED, "up");
         }
         lastScrollTop = st;
@@ -920,7 +845,7 @@ function prepareHandlers() {
  *      Column headers are created (and added to $container_header)
  *      tbody added to $container
  */
-export function populateBackdrop($container_header, $container) {
+function populateBackdrop($container_header, $container) {
     let $thead = $("<thead id='bg-thead'/>");
 
     $thead.attr("class", "bg-accent");
@@ -1023,7 +948,7 @@ export function populateBackdrop($container_header, $container) {
 
 }
 
-export function populateItems($container) {
+function populateItems($container) {
 
     // TODO: populate shadows first for less awkward overlaps
 
@@ -1094,7 +1019,7 @@ export function populateItems($container) {
  *      viewData has been appropriately populated (with groups)
  *
  * Postconditions:
- *      positions datastructure populated such that positions[id][state]
+ *      positions data structure populated such that positions[id][state]
  *          returns {'row': rowIndex, 'col': colIndex} for item "id" in
  *      viewData.groupLengths[groupKey].startRow populated so that
  *          viewData.groupLengths[groupKey].startRow[STATE] returns the row
@@ -1102,8 +1027,8 @@ export function populateItems($container) {
  *      viewData.groupLengths[groupKey].rowSetLen[STATE] populated so that
  *          it contains a list of lengths of sets (e.g. [1,1,2,1] means
  *          the 3rd set consumes 2 rows)
- *      NUM_ROWS datastructure populated with number of rows needed in
- *          Twinlist for each state
+ *      NUM_ROWS data structure populated with number of rows needed in
+ *          TwinList for each state
  *
  * Algorithm summary:
  *  viewData contains information about for each group (if none is default
@@ -1136,7 +1061,7 @@ export function populateItems($container) {
  *   NOT "unique move to sides and stuff moves down")
  * // TODO identical items that are similar to something else, probably just putting identical items in col 2 and not updating row if already there
  */
-export function calculatePositions() {
+function calculatePositions() {
 
     // populate NUM_ROWS
     NUM_ROWS = {};
@@ -1256,7 +1181,7 @@ export function calculatePositions() {
                             // reference to "identical item position data" (abbrev.)
                             let iIPD = positions[identicalItemId];
 
-                            // in similar (precompact) state - will all be
+                            // in similar (pre compact) state - will all be
                             //  at the same row, in identical column and
                             //  will stay in that position until compact state
                             iIPD[STATE_IDENTICAL] = {
@@ -1344,7 +1269,7 @@ export function calculatePositions() {
                         } // else don't process yet - not in same group
                     }
 
-                    // re-align next similar positions (for similar and compact statea)
+                    // re-align next similar positions (for similar and compact state)
                     let newSimilarStart = Math.max(similarNextRow["-1"], similarNextRow["1"]);
                     similarNextRow["-1"] = newSimilarStart;
                     similarNextRow["1"] = newSimilarStart;
@@ -1399,24 +1324,10 @@ export function calculatePositions() {
  * This varies depending on the current state
  * e.g. during Identical, drugs are merged so there seem to be fewer
  */
-export function calculateNumRemaining() {
+function calculateNumRemaining() {
     // return the number of page elements that are undecided
     return $(".undecided:not(.preview):not(.shadow):visible").length;
 }
-
-// called to update the review button
-// export function updateReviewButton() {
-//     debugger
-//     let $numRemaining = calculateNumRemaining();
-//     if ($numRemaining > 0) {
-//         // TODO rename
-//         $(".review_button .review").html('<div style="text-align:right"><strong>sign<br/>off</strong></div>' +
-// '<span class="num_remaining">' + $numRemaining + '</span><br/>left<br/>' + '<div class="patient_name">' +
-// patientLastName + ', ' + patientFirstName + ' (' + patientAge + patientGender + ')</div>'); $(".review_button
-// .review").addClass("disabled_button"); } else { $(".review_button .review").html('<div
-// style="text-align:right"><strong>sign<br/>off</strong></div>' + '<div class="patient_name">' + patientLastName + ',
-// ' + patientFirstName + ' (' + patientAge + patientGender + ')</div>'); $(".review_button
-// .review").removeClass("disabled_button"); } }
 
 // animation /////////////////////////////////////////////////////////
 /*
@@ -1425,7 +1336,7 @@ export function calculateNumRemaining() {
  * immediate - whether to move all items into final positon or use changeState
  * jumpToPosition - whether to jump to position or animate transition
  */
-export function redraw(sort, filter, immediate, jumpToPosition) {
+function redraw(sort, filter, immediate, jumpToPosition) {
     /*
      * Tweak proportions.
      *
@@ -1454,9 +1365,9 @@ export function redraw(sort, filter, immediate, jumpToPosition) {
     // $(".add").css("top", headerHeight + contentMarginTop + topOffset() + optionsPanelHeight + tabHeight * 0.5);
     // $(".edit").css("top", headerHeight + contentMarginTop + topOffset() + optionsPanelHeight + tabHeight * 1.75);
 
-    // TODO: move scrolltip adjustment?
+    // TODO: move scroll-tip adjustment?
 
-    adjustScrolltips();
+    adjustScrollTips();
 
     // if parameter to immediately draw (default undefined -> false)
     //  calculatePositions and animate each at once
@@ -1474,7 +1385,7 @@ export function redraw(sort, filter, immediate, jumpToPosition) {
     }
 }
 
-export function changeState(toState, jumpToPosition) {
+function changeState(toState, jumpToPosition) {
     // if state is final one, disable compare
     if (toState === STATE_COMPACT) {
         $(".compare").addClass("inactive");
@@ -1513,7 +1424,7 @@ export function changeState(toState, jumpToPosition) {
  *      update row coloring
  *      animate item position
  */
-export function transition(from, to, jumpToPosition) {
+function transition(from, to, jumpToPosition) {
     let delay = 0;
 
     if (from < to) {
@@ -1634,7 +1545,7 @@ export function transition(from, to, jumpToPosition) {
 
 }
 
-export function animateIdentical(toState, jumpToPosition) {
+function animateIdentical(toState, jumpToPosition) {
     let i = 0;
     let checked = {}, animated = {};
 
@@ -1660,7 +1571,7 @@ export function animateIdentical(toState, jumpToPosition) {
     }
 }
 
-export function animateUnique(toState, jumpToPosition) {
+function animateUnique(toState, jumpToPosition) {
     let tempUnique1 = unique1, tempUnique2 = unique2;
 
     for (let i = 0; i < unique1.length; i++) {
@@ -1686,7 +1597,7 @@ export function animateUnique(toState, jumpToPosition) {
     animateSet(tempUnique2, toState, animationDuration + animationDelay, jumpToPosition);
 }
 
-export function animateDefault(toState, jumpToPosition) {
+function animateDefault(toState, jumpToPosition) {
     let duration = undefined;
     if (jumpToPosition)
         duration = 0;
@@ -1696,7 +1607,7 @@ export function animateDefault(toState, jumpToPosition) {
     });
 }
 
-export function animateSet(set, toState, delay, animated, jumpToPosition) {
+function animateSet(set, toState, delay, animated, jumpToPosition) {
 
     let duration = undefined;
     if (jumpToPosition)
@@ -1718,7 +1629,7 @@ export function animateSet(set, toState, delay, animated, jumpToPosition) {
     }, delay);
 }
 
-export function animateItem(id, toState, duration) {
+function animateItem(id, toState, duration) {
     // skip items that did not have positions calculated in viewData
     if (!positions[id] || !positions[id][toState])
         return;
@@ -1756,8 +1667,8 @@ export function animateItem(id, toState, duration) {
                     // only hide shadows if in right column and has an identical in left column
                     let identicalItems = getIdentical(id, true);
                     for (let i = 0; i < identicalItems.length; i++) {
-                        let idenItem = items[identicalItems[i]];
-                        if (item.attributes[groupBy][item.groupByOffset] === idenItem.attributes[groupBy][idenItem.groupByOffset]) {
+                        let identicalItem = items[identicalItems[i]];
+                        if (item.attributes[groupBy][item.groupByOffset] === identicalItem.attributes[groupBy][identicalItem.groupByOffset]) {
                             hidden[id] = true;
                             toggleItem($item, toggleOffDelay, false);
                             break;
@@ -1775,22 +1686,22 @@ export function animateItem(id, toState, duration) {
     }
 }
 
-export function topOffset() {
+function topOffset() {
     return $(".backdrop-header th").outerHeight(true);
 }
 
-export function columnWidth() {
+function columnWidth() {
     // align according to column headers
     return $(".backdrop-header tr").outerWidth(true) / 5;
 }
 
-export function rowHeight() {
+function rowHeight() {
     // include padding but exclude margin
     return $(".backdrop td").outerHeight();
 }
 
 // given offset information (which row/column), convert into (x,y) position info for css "top" and "left"
-export function offsetToPosition(offset) {
+function offsetToPosition(offset) {
     let twoColOffset = 0;
     // offset for 2 column versions to make lists closer together
     if (version !== VERSION_FULL) {
@@ -1806,7 +1717,7 @@ export function offsetToPosition(offset) {
     };
 }
 
-export function transitionDelay(from, to) {
+function transitionDelay(from, to) {
     let delay = 0;
 
     if (from < to) {
@@ -1827,7 +1738,7 @@ export function transitionDelay(from, to) {
     return delay;
 }
 
-export function transitionIdenticalDelay() {
+function transitionIdenticalDelay() {
     let numSets = 0;
     let checked = {};
 
@@ -1852,7 +1763,7 @@ export function transitionIdenticalDelay() {
  * Returns:
  *      none
  */
-export function setAnimationSpeed(speed) {
+function setAnimationSpeed(speed) {
     // adjust speed
     animationSpeed = speed;
     $("select[name='speed']").val(speed);
@@ -1877,7 +1788,7 @@ export function setAnimationSpeed(speed) {
 }
 
 // interface adjustment //////////////////////////////////////////////
-export function adjustBackdrop(toState) {
+function adjustBackdrop(toState) {
     // redraw everything: avoid odd white stripe when end row changes
     $(".backdrop tbody tr").remove();
 
@@ -1891,7 +1802,7 @@ export function adjustBackdrop(toState) {
     }
 }
 
-export function adjustColumnHeaders(from, to) {
+function adjustColumnHeaders(from, to) {
     toggleHeader(LIST_1_UNIQUE_INDEX, to >= STATE_UNIQUE);
     toggleHeader(LIST_IDENTICAL_INDEX, to >= STATE_IDENTICAL);
 
@@ -1907,7 +1818,7 @@ export function adjustColumnHeaders(from, to) {
  * Given a state, adjust animation controls appropriately
  * "state" is one of the defined constants above
  */
-export function adjustAnimationControls(state) {
+function adjustAnimationControls(state) {
     $(".separate, .identical, .unique, .similar, .compact").removeClass("active inactive");
     // let active = {};
     let inactive = {};
@@ -1942,7 +1853,7 @@ export function adjustAnimationControls(state) {
     $("." + stateIndexToName(state)).removeClass("inactive").addClass("active");
 }
 
-export function adjustGroupLabels(from, to) {
+function adjustGroupLabels(from, to) {
     $(".groups .label").remove();
 
     if (groupBy) {
@@ -1960,47 +1871,7 @@ export function adjustGroupLabels(from, to) {
     }
 }
 
-/*
- * populate the third column in 3-column view (the anchor column)
- * will either be drug classes or diagnoses right now
- *
- * Parameters:
- *      $container - jQuery selected object to append to
- *      populationData - data to insert, assumed to be an object
- *          whose keys will be the names
- */
-export function populateThirdAnchorColumn($container, populationData) {
-    let bg_thead_height = 0;
-    let dHeight = 40;
-    // TODO fetch from css?
-
-    // populate all items and shadows
-    let i = 0;
-    for (let key in populationData) {
-        let itemText = populationData[key];
-
-        let $item = $("<div></div>");
-        $item.attr("id", key);
-        $item.attr("class", "diagnosis");
-
-        let $header = $("<div></div>");
-        let $name = $("<span/>");
-
-        $header.attr("class", "header");
-        $name.attr("class", "name");
-        $name.text(itemText);
-
-        $header.append($name);
-        $item.append($header);
-
-        $item.css("top", bg_thead_height + (i * dHeight) + "px");
-
-        $container.append($item);
-        i++;
-    }
-}
-
-export function adjustCellDimensions() {
+function adjustCellDimensions() {
     // adjust padding
     // $("#reconciliation .item").css("padding-top", model.groupBy ? "1em" : "0.6em");
     // $("#reconciliation .item").css("padding-bottom", model.groupBy ? 0 : "0.4em");
@@ -2021,7 +1892,7 @@ export function adjustCellDimensions() {
 }
 
 // given a state, adjust difference highlights on items
-export function adjustDifferenceHighlights(toState) {
+function adjustDifferenceHighlights(toState) {
     if (toState < STATE_SIMILAR) {
         $(".difference").removeClass("highlight");
     } else {
@@ -2034,7 +1905,7 @@ export function adjustDifferenceHighlights(toState) {
     }
 }
 
-export function adjustScrolltips() {
+function adjustScrollTips() {
     let bottom = $("#reconciliation > .detail").outerHeight(true) + $(".branding").outerHeight(true) + parseFloat($("#reconciliation > .content").css("margin-bottom"));
 
     // hand-tweaked positions, adjust as appropriate
@@ -2043,7 +1914,7 @@ export function adjustScrolltips() {
     $(".down").css("bottom", bottom);
 }
 
-export function toggleHeader(index, show) {
+function toggleHeader(index, show) {
     let $header = $(".backdrop th:nth-child(" + (index + 1) + ") .col-header");
 
     if (show) {
@@ -2053,7 +1924,7 @@ export function toggleHeader(index, show) {
     }
 }
 
-export function toggleConditionalHeaders(show) {
+function toggleConditionalHeaders(show) {
     if (show) {
         $(".backdrop th:nth-child(" + (LIST_1_INDEX + 1) + ") .name .conditional").fadeIn(toggleOnDelay);
         $(".backdrop th:nth-child(" + (LIST_2_INDEX + 1) + ") .name .conditional").fadeIn(toggleOnDelay);
@@ -2063,7 +1934,7 @@ export function toggleConditionalHeaders(show) {
     }
 }
 
-export function stateIndexToName(index) {
+function stateIndexToName(index) {
     switch (index) {
         case STATE_SEPARATE:
             return "separate";
@@ -2099,11 +1970,10 @@ function mousedownHandler(event) {
  * String clickType - type of click (indicates which direction to cycle)
  *      {"left", "right"}
  */
-export function itemChange($item, itemId, clickType) {
+function itemChange($item, itemId, clickType) {
     // log(EVENT_CLICKED, "item");
 
     let dst;
-    editID = itemId;
 
     if (clickType === "left") {// left click
         if ($item.hasClass("undecided")) {
@@ -2157,7 +2027,7 @@ function mouseoverHandler() {
         hoverSet[id] = true;
         hoverItem(id, true, true);
     }
-    hoverScrolltips(id, true);
+    hoverScrollTips(id, true);
 
     // update item detail
     let $detail = $(".detail .content");
@@ -2184,11 +2054,11 @@ function mouseoverHandler() {
                 for (let i = 0; i < values.length; i++) {
 
                     if (attributeName === ATTR_SUBITEM) {
-                        let subitem = values[i];
-                        let dose = subitem
+                        let subItem = values[i];
+                        let dose = subItem
                             .attributes[ATTR_DOSE];
 
-                        valuesString += subitem.name + (dose ? " " + subitem.attributes[ATTR_DOSE] : "");
+                        valuesString += subItem.name + (dose ? " " + subItem.attributes[ATTR_DOSE] : "");
                     } else {
                         valuesString += values[i];
                     }
@@ -2241,7 +2111,7 @@ function mouseoutHandler() {
         hoverItem(id, false, true);
     }
     hoverSet = {};
-    hoverScrolltips(this.id, false);
+    hoverScrollTips(this.id, false);
 
     let $detail = $(".detail .content");
     $detail.text("Nothing to display.");
@@ -2250,14 +2120,14 @@ function mouseoutHandler() {
     $detail.css("background", "#f0f0f0");
     $detail.css("color", "#333333");
 
-    // diagnosis unhighlight
+    // diagnosis un-highlight
     if (version === VERSION_THREE_COLUMN) {
         for (let diagnosisId in hoverDiagnosisSet) {
             $("#" + hoverDiagnosisSet[diagnosisId]).removeClass("third-col-anchor-hover");
         }
         hoverDiagnosisSet = [];
     } else if (version === VERSION_3COL_CLASSES) {
-        // drug class unhighlight // TODO clean - rename
+        // drug class un-highlight // TODO clean - rename
         for (let diagnosisId in hoverDiagnosisSet) {
             $("#" + hoverDiagnosisSet[diagnosisId]).removeClass("third-col-anchor-hover");
         }
@@ -2302,10 +2172,8 @@ function hoverItem(id, mouseover, showHighlights) {
     }
 }
 
-// TODO consider refactor
-
 // hover item if mouseover is on a diagnosis
-export function diagnosisHoverItem(id, mouseover, showHighlights) {
+function diagnosisHoverItem(id, mouseover, showHighlights) {
     let item = items[id];
     let $item = $("#" + id);
 
@@ -2320,7 +2188,7 @@ export function diagnosisHoverItem(id, mouseover, showHighlights) {
         if ($item.hasClass("undecided")) {
             //$item.addClass("diagnosis-hover");
         } else {
-            // undo de-emphasization
+            // undo de-emphasizing
             $item.css("opacity", "1.0");
         }
 
@@ -2343,7 +2211,7 @@ export function diagnosisHoverItem(id, mouseover, showHighlights) {
     }
 }
 
-export function getUniqueElements(arr) {
+function getUniqueElements(arr) {
     let u = {}, a = [];
     for (let i = 0, l = arr.length; i < l; ++i) {
         if (u.hasOwnProperty(arr[i])) {
@@ -2355,8 +2223,8 @@ export function getUniqueElements(arr) {
     return a;
 }
 
-export function hoverScrolltips(id, mouseover) {
-    $(".scrolltip").removeClass("show");
+function hoverScrollTips(id, mouseover) {
+    $(".scroll-tip").removeClass("show");
 
     if (mouseover) {
         let checkItems = (version === VERSION_FULL || version === VERSION_LINK_ONLY || version === VERSION_THREE_COLUMN || version === VERSION_3COL_CLASSES) ? getRelatedSet(id, multigroup) : getShadowSet(id);
@@ -2400,7 +2268,7 @@ export function hoverScrolltips(id, mouseover) {
  *
  * doRedraw - whether to perform a redraw afterwards
  */
-export function toggleOptionsPanel($panel, doRedraw) {
+function toggleOptionsPanel($panel, doRedraw) {
     if ($panel.hasClass("active")) {
         $panel.text("show options").removeClass("active");
 
@@ -2449,7 +2317,7 @@ export function toggleOptionsPanel($panel, doRedraw) {
         redraw(true, true, true);
 }
 
-export function isOffscreen(id) {
+function isOffscreen(id) {
     let status = "neither";
     let $content = $(".scrolling_content");
     let divHeight = $(".item").outerHeight();
@@ -2459,7 +2327,7 @@ export function isOffscreen(id) {
     if (!positions[id]) {
         return status;
     }
-    // skip for items that are not visible (e.g. shadows that are populated by not in viewdata)
+    // skip for items that are not visible (e.g. shadows that are populated by not in view data)
 
     let position = offsetToPosition(positions[id][state]);
 
@@ -2472,18 +2340,13 @@ export function isOffscreen(id) {
 }
 
 // item action ///////////////////////////////////////////////////////
-export function resetDecisions() {
-    setAccepted([]);
-    setRejected([]);
-    setUndecided(list1.source.concat(list2.source));
-
-    $(".item").removeClass("accepted rejected").addClass("undecided");
+function resetDecisions() {
     resetLinkActionFlags();
 
     state = STATE_SEPARATE;
 }
 
-export function resetLinkActionFlags() {
+function resetLinkActionFlags() {
     linkAction = {};
 
     for (let id in items) {
@@ -2491,10 +2354,10 @@ export function resetLinkActionFlags() {
     }
 }
 
-export function processItem(id, dst, nolink) {
+function processItem(id, dst, noLink) {
     // don't trigger meaningless linked actions
     if (!$("#" + id).hasClass(dst)) {
-        if (nolink) {
+        if (noLink) {
             actOnItem(id, dst);
         } else {
             // act on shadow = act on item
@@ -2503,7 +2366,7 @@ export function processItem(id, dst, nolink) {
     }
 }
 
-export function getItemsInColumn(state, columnIndex) {
+function getItemsInColumn(state, columnIndex) {
 
     if (state === STATE_SEPARATE) {
 
@@ -2558,7 +2421,7 @@ export function getItemsInColumn(state, columnIndex) {
 }
 
 // called to handle column actions (like "keep", "reject", "clear")
-export function processColumn(event) {
+function processColumn(event) {
     // log(EVENT_CLICKED, "column_action");
     // log(EVENT_COLUMN_ACTION, "dst:" + event.data.dst + ",state:" + state + ",column:" + event.data.index);
 
@@ -2581,7 +2444,7 @@ export function processColumn(event) {
     // updateReviewButton();
 }
 
-export function actOnSet(id, dst) {
+function actOnSet(id, dst) {
     let identical = getIdentical(id);
     let similar = getSimilar(id, undefined, true);
 
@@ -2610,7 +2473,7 @@ export function actOnSet(id, dst) {
     actOnItem(id, dst);
 }
 
-export function actOnItem(id, dst) {
+function actOnItem(id, dst) {
     // act on item
     decide(id, dst);
 
@@ -2622,20 +2485,20 @@ export function actOnItem(id, dst) {
     }
 }
 
-export function decide(id, dst) {
+function decide(id, dst) {
     let $item = $("#" + id);
     let $differences = $("#" + id + " .difference");
     let checkID = items[id].isShadow ? getShadowed(id) : id;
 
     // update model
-    let src = "undecided";
+    // let src;
 
-    if ($item.hasClass("accepted")) {
-        src = "accepted";
-    } else if ($item.hasClass("rejected")) {
-        src = "rejected";
-    }
-    decide(id, src, dst);
+    // if ($item.hasClass("accepted")) {
+    //     src = "accepted";
+    // } else if ($item.hasClass("rejected")) {
+    //     src = "rejected";
+    // }
+    // decide(id, src, dst);
 
     // update view
     $item.removeClass("accepted rejected undecided undecided-hover");
@@ -2661,185 +2524,12 @@ export function decide(id, dst) {
     linkAction[id] = checkID in identical;
 }
 
-// export function updateItem(id, allNames, attributes) {
-//     // update model
-//     let item = items[id];
-//
-//     // verify was changed in some way
-//     let unchanged = allNames['recorded'] === item.name;
-//     for (let aN in attributes) {
-//         let oldValue = item.attributes[aN] === undefined ? "" : item.attributes[aN].toString();
-//         let newValue = attributes[aN] === undefined ? "" : attributes[aN].toString();
-//         unchanged = unchanged && oldValue === newValue;
-//     }
-//
-//     if (!unchanged) {
-//         item.setName(allNames);
-//         item.isModified = true;
-//
-//         for (let attributeName in attributes) {
-//             item.attributes[attributeName] = attributes[attributeName];
-//         }
-//
-//         // update view
-//         $("#" + id + " .name").text(item.name);
-//         $("#" + id + " .detail").remove();
-//
-//         let newDetailHTML = "<div class='detail'>";
-//         let differences = [];
-//
-//         if (id in similar) {
-//             differences = similar[item.id].differences;
-//         }
-//
-//         for (let attribute in item.attributes) {
-//             if (attributes[attribute].display) {
-//                 newDetailHTML += "<span" + (differences.indexOf(attribute) !== -1 ? " class='difference'" : "") +
-// ">" + item.attributes[attribute].toString() + "</span>" } } newDetailHTML += "</div>";  $("#" +
-// id).addClass("modified"); $("#" + id).append($(newDetailHTML)); } else { item = false; // return falsey value so no
-// updates made } return item; }
-
-// TODO: sort ////////////////////////////////////////////////////////
-// export function saveModifiedItem(type) {
-//     let allNames;
-//     let attributes = {};
-//
-//     let name = $("#modify input[name='name']").val() + "";
-//     let route = $("#modify input[name='route']").val() + "";
-//     let frequency = $("#modify input[name='frequency']").val() + "";
-//     let dose = $("#modify input[name='dose']").val() + "";
-//     let instructions = $("#modify textarea[name='instructions']").val() || "";
-//     let drugClass = "unknown";
-//
-//     allNames = {
-//         recorded: name,
-//         generic: name,
-//         brand: name
-//     };
-//     attributes[ATTR_DOSE] = [dose];
-//     attributes[ATTR_ROUTE] = [route];
-//     attributes[ATTR_FREQUENCY] = [frequency];
-//     attributes[ATTR_INSTRUCTIONS] = [instructions];
-//
-//     if (type === "edit") {
-//         let newItem = updateItem(editID, allNames, attributes);
-//
-//         // if nothing changed, newItem will be false
-//         if (newItem) {
-//
-//             // update shadows or shadowed items, if any
-//             let updateIDs = [];
-//
-//             if (newItem.isShadow) {
-//                 updateIDs = updateIDs.concat(getShadowed(editID));
-//             } else {
-//                 updateIDs = updateIDs.concat(getShadows(editID));
-//             }
-//
-//             for (let i = 0; i < updateIDs.length; i++) {
-//                 updateItem(updateIDs[i], allNames, attributes);
-//             }
-//         }
-//     } else {
-//         // update model - needs a name at least
-//         if (name) {
-//             let newItem;
-//
-//             attributes[ATTR_DRUG_CLASS] = [drugClass];
-//             newItem = ListItem(nextID++, list2.id, allNames, attributes);
-//             newItem.groupByOffset = 0;
-//             newItem.isModified = true;
-//             newItem.isShadow = false;
-//             newItem.isShadowed = false;
-//
-//             items[newItem.id] = newItem;
-//             list2.source.push(newItem.id);
-//             unique2.push(newItem.id);
-//             let tempAccepted = getAccepted();
-//             tempAccepted.push(newItem.id);
-//             setAccepted(tempAccepted)
-//             positions[newItem.id] = {// TODO verify remove - unnecessary ?
-//                 threshold: STATE_UNIQUE,
-//                 initialCol: LIST_2_INDEX,
-//                 finalCol: LIST_2_UNIQUE_INDEX
-//             };
-//
-//             // update view
-//             let htmlItem = "<div id='" + newItem.id + "' class='item accepted modified'>" + "<div class='header'>" +
-// "<span class='name'>" + name + "</span>" + "</div>" + "<div class='detail'>";  for (let attribute in
-// newItem.attributes) { if (attributes[attribute].display) { htmlItem += "<span class='" +
-// newItem.attributes[attribute].toString() + "'>" + newItem.attributes[attribute].toString() + "</span>"; } } htmlItem
-// += "</div></div>"; $(".items").append($(htmlItem));  // prepare actions $("#" +
-// newItem.id).mousedown(mousedownHandler).mouseover(mouseoverHandler).mouseout(mouseoutHandler).bind("contextmenu",
-// function () { // free right click for item action return false; }); } } redraw(true, true); }
-
-// export function resetModifyPanel(type) {
-//     log(EVENT_MODIFY_PANEL_START, "type:" + type);
-//     let attributes = {
-//         name: "",
-//         dose: "",
-//         route: "",
-//         frequency: "",
-//         instructions: ""
-//     };
-//
-//     // nothing to respond to
-//     $("#modify .response").removeClass("show");
-//
-//     // panel title
-//     $("#modify h1").text(type);
-//
-//     // preview and form contents
-//     if (type === "edit") {
-//         let item = items[editID];
-//
-//         attributes = {
-//             name: item.name,
-//             dose: item.attributes[ATTR_DOSE],
-//             route: item.attributes[ATTR_ROUTE],
-//             frequency: item.attributes[ATTR_FREQUENCY],
-//             instructions: ATTR_INSTRUCTIONS in item.attributes ? item.attributes[ATTR_INSTRUCTIONS] : ""
-//         };
-//     }
-//
-//     for (let attribute in attributes) {
-//         let value = attributes[attribute].toString();
-//
-//         if (attribute === "instructions") {
-//             $("textarea[name='instructions']").val(value);
-//         } else {
-//             $("input[name='" + attribute + "']").val(value);
-//             $(".preview ." + attribute).text(value);
-//         }
-//     }
-// }
-
-export function updatePreview($field) {
+function updatePreview($field) {
     $(".preview ." + $field.attr("name")).text($field.val());
 }
 
-// function populateColumn(arr, rows) {
-//     for (let i = 0; i < arr.length; i++) {
-//         rows[i] += populateReviewItem(arr[i]);
-//     }
-//
-//     for (; i < rows.length; i++) {
-//         rows[i] += "<td/>";
-//     }
-//     return rows;
-// }
-//
-// function populateReviewItem(id) {
-//     let item = model.items[id];
-//
-//     let htmlItem = "<td class='item" + ($("#" + id).hasClass("modified") ? " modified" : "") + "'>" + "<div
-// class='header'>" + "<span class='name'>" + item.name + "</span>" + "</div>" + "<div class='detail'>";  for (let
-// attribute in item.attributes) { if (model.attributes[attribute].display) { htmlItem += "<span class='" +
-// item.attributes[attribute].toString() + "'>" + item.attributes[attribute].toString() + "</span>"; } } htmlItem
-// += "</div></td>"; return htmlItem; }
-
 // save decisions into session storage for summary.html
-export function saveItemActions() {
+function saveItemActions() {
     let stop = "", start = "", cont = "";
 
     for (let id in items) {
@@ -2871,9 +2561,6 @@ export function saveItemActions() {
             start = start + itemString;
         }
     }
-    stop = stop.trimRight();
-    start = start.trimRight();
-    cont = cont.trimRight();
 
     // setStorageItem("stop", stop);
     // setStorageItem("start", start);
@@ -2883,24 +2570,8 @@ export function saveItemActions() {
     // setStorageItem("patient_name", patientLastName + ", " + patientFirstName);
 }
 
-// export function getVersionShortName(version) {
-//     switch (version) {
-//         case VERSION_FULL:
-//             return "FULL";
-//         case VERSION_BASELINE:
-//             return "BASE";
-//         case VERSION_LINK_ONLY:
-//             return "LINK";
-//         default:
-//             break;
-//     }
-//     return undefined;
-// }
-
 // updates cycling/options and does redraw depending on dontRedraw
-export function updateGroupBy(toGroup, dontRedraw) {
-
-    // let $curr_groupby = model.groupBy;
+function updateGroupBy(toGroup, dontRedraw) {
 
     // update cycling if toGroup is valid
     let $next_val;
@@ -2919,12 +2590,8 @@ export function updateGroupBy(toGroup, dontRedraw) {
     $("select[name='groupBy']").val(toGroup);
 
     // update the cycle group button's text
-    $(".cycle_groupby").html("group by: " + $next_name);
-    $(".cycle_groupby").attr("value", $next_val);
-
-    // debugger
-    // update mpdel
-    // groupBy = toGroup;
+    $(".cycle_groupBy").html("group by: " + $next_name);
+    $(".cycle_groupBy").attr("value", $next_val);
 
     setGroupBy(toGroup)
 

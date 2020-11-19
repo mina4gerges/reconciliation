@@ -1,85 +1,49 @@
-// pseudo constants //////////////////////////////////////////////////
 import { toggleItem, toggleOffDelay, toggleOnDelay } from "./controller";
 
-export const ATTR_NAME = "__ATTR_NAME__";
-// export const ATTR_GENERIC_NAME = "__ATTR_GENERIC_NAME__";
-// export const ATTR_RECORDED_NAME = "__ATTR_RECORDED_NAME__";
-// export const ATTR_BRAND_NAME = "__ATTR_BRAND_NAME__";
-export const ATTR_ROUTE = "__ATTR_ROUTE__";
-export const ATTR_FREQUENCY = "__ATTR_FREQUENCY__";
-export const ATTR_DOSE = "__ATTR_DOSE__";
-export const ATTR_DRUG_CLASS = "__ATTR_DRUG_CLASS__";
-export const ATTR_DIAGNOSES = "__ATTR_DIAGNOSES__";
-export const ATTR_SUBITEM = "__ATTR_SUBITEM__";
-export const ATTR_DATE_STARTED = "__ATTR_DATE_STARTED__";
-export const ATTR_INSTRUCTIONS = "__ATTR_INSTRUCTIONS__";
-export const ATTR_TYPE_NUMERIC = "__ATTR_TYPE_NUMERIC__";
-export const ATTR_TYPE_GENERAL = "__ATTR_TYPE_GENERAL__";
-export const ATTR_TYPE_CATEGORICAL = "__ATTR_TYPE_CATEGORICAL__";
-// config - dataset
-export const DATASET_APP = "__DATASET_APPENDECTOMY__";
-export const DATASET_CHF1 = "__DATASET_CONGESTIVE_HEART_FAILURE_1__";
-export const DATASET_CHF2 = "__DATASET_CONGESTIVE_HEART_FAILURE_2__";
-export const DATASET_PD1 = "__DATASET_PULMONARY_DISEASE_1__";
-export const DATASET_PD2 = "__DATASET_PULMONARY_DISEASE_2__";
-export const DATASET_OTHER_SIMPLE = "__DATASET_OTHER_SIMPLE__";
-export const DATASET_OTHER_COMPLEX = "__DATASET_OTHER_COMPLEX__";
-export const DATASET_OTHER_EXTRA = "__DATASET_OTHER_EXTRA__";
-export const DATASET_PD2_CORRECTED = "__DATASET_PULMONARY_DISEASE_2_CORRECTED__";
-export const DATASET_CHF1_MODIFIED = "__DATASET_CONGESTIVE_HEART_FAILURE_1_MODIFIED__";
-export const DATASET_DEFAULT = DATASET_APP;
-// export const DATASET_DEFAULT = "dataSet_test";
-export const RECORDED_NAME = "recorded";
-// export const GENERIC_NAME = "generic";
-// export const BRAND_NAME = "brand";
-export const AFTER_ACTION_GRAYOUT = "__AFTER_ACTION_GRAYOUT__";
-export const AFTER_ACTION_REMOVE = "__AFTER_ACTION_REMOVE__";
-export const FILTER_DELAY_SCALE = 4;
-// data //////////////////////////////////////////////////////////////
-export let patientFirstName = "";
-export let patientLastName = "";
-export let patientAge = 0;
-export let patientGender = "";
-export let dataset = "";
+let dataset = "";
+let shadows = {};
+let filterOn = "";
 export let items = {};
-// diagnoses for items
-export let diagnoses = {};
-// relationship between items and diagnoses
-export let diagnosisSet = {};
-// drug classes for the current dataset
-export let drugClasses = {};
-export let drugClassSet = {};
-export let shadows = {};
-export let itemsToShadows = {};
-export let shadowsToItems = {};
 export let hidden = {};
-export let attributes = {};
+let itemsToShadows = {};
 export let groupBy = "";
-// constant for default grouping
-export const DEFAULT_GROUP = "";
-export const sortBy = ATTR_NAME;
-export let filterOn = "";
-export let multigroup = false;
-export let afterAction = AFTER_ACTION_GRAYOUT;
 export let unique1 = [];
 export let unique2 = [];
 export let identical = [];
-// number of identical sets (each set will take 1 row in compact view)
-export let numIdenticalSets = 0;
 export let similar = [];
-// next id to use when adding items (e.g. if items added dynamically)
-export let nextID = 0;
-// arrays to preserve order of actions
-export let accepted = [];
-export let rejected = [];
-export let undecided = [];
+export let attributes = {};
+export let diagnosisSet = {};
+export let drugClassSet = {};
+const FILTER_DELAY_SCALE = 4;
+export let multigroup = false;
+export let shadowsToItems = {};
+export const DEFAULT_GROUP = "";
+const sortBy = "__ATTR_NAME__";
+export const ATTR_NAME = "__ATTR_NAME__";
+export const RECORDED_NAME = "recorded";
 export let displayName = RECORDED_NAME;
+export const ATTR_DOSE = "__ATTR_DOSE__";
+export const ATTR_ROUTE = "__ATTR_ROUTE__";
+const ATTR_DIAGNOSES = "__ATTR_DIAGNOSES__";
+export const ATTR_SUBITEM = "__ATTR_SUBITEM__";
+const ATTR_DRUG_CLASS = "__ATTR_DRUG_CLASS__";
+export const ATTR_FREQUENCY = "__ATTR_FREQUENCY__";
+const ATTR_DATE_STARTED = "__ATTR_DATE_STARTED__";
+const ATTR_INSTRUCTIONS = "__ATTR_INSTRUCTIONS__";
+const ATTR_TYPE_NUMERIC = "__ATTR_TYPE_NUMERIC__";
+const ATTR_TYPE_GENERAL = "__ATTR_TYPE_GENERAL__";
+export let afterAction = "__AFTER_ACTION_GRAYOUT__";
+const ATTR_TYPE_CATEGORICAL = "__ATTR_TYPE_CATEGORICAL__";
+export const DATASET_DEFAULT = "__DATASET_APPENDECTOMY__";
+export const AFTER_ACTION_REMOVE = "__AFTER_ACTION_REMOVE__";
+export const AFTER_ACTION_GRAYOUT = "__AFTER_ACTION_GRAYOUT__";
 
 export const list1 = {
     id: "list0",
     name: "Intake",
     source: []
 };
+
 export const list2 = {
     id: "list1",
     name: "Hospital",
@@ -87,17 +51,18 @@ export const list2 = {
 };
 
 // expected column names of csv format - all items have these attributes given in the csv
-let CSVC = {};
-CSVC.ID = "id";
-CSVC.ORIGIN = "origin";
-CSVC.R_NAME = "recorded name";
-CSVC.G_NAME = "generic name";
-CSVC.B_NAME = "brand name";
-CSVC.DOSE = "dose";
-CSVC.ROUTE = "route";
-CSVC.FREQUENCY = "frequency";
-CSVC.DRUG_CLASSES = "drug classes";
-CSVC.DIAGNOSES = "diagnoses";
+let CSVC = {
+    ID: "id",
+    DOSE: "dose",
+    ROUTE: "route",
+    ORIGIN: "origin",
+    B_NAME: "brand name",
+    G_NAME: "generic name",
+    DIAGNOSES: "diagnoses",
+    FREQUENCY: "frequency",
+    R_NAME: "recorded name",
+    DRUG_CLASSES: "drug classes",
+};
 
 /*
  * Hard-coded datasets used by Twinlist, in future, should retrieve from other data source
@@ -111,27 +76,6 @@ CSVC.DIAGNOSES = "diagnoses";
  *       Assumes the keys match the attribute constants used by Twinlist (e.g. see visible.ATTR_ROUTE, etc.)
  */
 let DATASETS = {
-    "dataSet_test": {
-        // patient data
-        patientFirstName: "mina",
-        patientLastName: "gerges",
-        patientAge: 20,
-        patientGender: "M",
-
-        // item relationships
-        unique1: [0, 5],
-        unique2: [9, 10],
-        identical: [[1, 11], [4, 8]],
-        similar: [
-            { items: [2, 7], differences: [ATTR_NAME, ATTR_DOSE] },
-            { items: [3, 6], differences: [ATTR_NAME] }],
-
-        // item data
-        csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
-            '0,list0,Chantix,varenicline,Chantix,81 mg,PO,daily,tt,ttt\n' +
-            '1,list1,Chantix,varenicline,Chantix,81 mg,PO,daily,tt,ttt'
-    },  // end of AP
     "__DATASET_APPENDECTOMY__": {
         // patient data
         patientFirstName: "David",
@@ -699,49 +643,6 @@ export function init(dataset) {
     loadData(dataset);
 }
 
-function loadData(newDataset) {
-    dataset = newDataset;
-
-    populatePatientInformation(dataset);
-    populateLists(dataset);
-    detectAttributes();
-    detectRelationships(dataset);
-    detectDiagnoses();
-    detectDrugClasses();
-
-    // create "shadows", copies, to show n-group affiliation
-    populateShadows();
-
-}
-
-// export function getDatasetShortName(dataset) {
-//     switch (dataset) {
-//         case DATASET_APP:
-//             return "APPNDCTMY";
-//         case DATASET_CHF1:
-//             return "CHF1";
-//         case DATASET_CHF2:
-//             return "CHF2";
-//         case DATASET_PD1:
-//             return "PD1";
-//         case DATASET_PD2:
-//             return "PD2";
-//         case DATASET_OTHER_SIMPLE:
-//             return "O_SIMPLE";
-//         case DATASET_OTHER_COMPLEX:
-//             return "O_COMPLEX";
-//         case DATASET_OTHER_EXTRA:
-//             return "O_EXTRA";
-//         case DATASET_PD2_CORRECTED:
-//             return "PD2_C";
-//         case DATASET_CHF1_MODIFIED:
-//             return "CHF1_M";
-//         default:
-//             break;
-//     }
-//     return undefined;
-// }
-
 /*
  * Create and return viewData object (contains information on what to display)
  *
@@ -920,45 +821,6 @@ export function setFilterOn(newValue) {
     filterOn = newValue;
 }
 
-export function getFilterOn() {
-    return filterOn;
-}
-
-export function setAccepted(newValue) {
-    accepted = newValue
-}
-
-export function getAccepted() {
-    return accepted;
-}
-
-export function setRejected(newValue) {
-    rejected = newValue
-}
-
-export function getRejected() {
-    return rejected;
-}
-
-export function setUndecided(newValue) {
-    undecided = newValue;
-}
-
-export function getUndecided() {
-    return undecided;
-}
-
-// methods ///////////////////////////////////////////////////////////
-
-export function decide(id, src, dst) {
-    let index = [src].indexOf(parseFloat(id));
-
-    if (index !== -1) {// shadows not included
-        [src].splice(index, 1);
-        [dst].push(parseFloat(id));
-    }
-}
-
 export function getIdentical(id, includeShadows, applyFilter) {
     let tempIdentical = [];
     let checkID = items[id].isShadow ? getShadowed(id) : id;
@@ -1044,10 +906,6 @@ export function getRelated(id, includeShadows) {
     }
 }
 
-// function getSimilarSet(id, includeShadows) {
-//     return getShadowSet(id).concat(getSimilar(id, includeShadows, true));
-// }
-
 export function getRelatedSet(id, includeShadows) {
     return getShadowSet(id).concat(getRelated(id, includeShadows));
 }
@@ -1072,12 +930,30 @@ export function getShadowSet(id) {
     return [checkID].concat(getShadows(checkID));
 }
 
+function loadData(newDataset) {
+    dataset = newDataset;
+
+    // populatePatientInformation(dataset);
+    populateLists(dataset);
+    detectAttributes();
+    detectRelationships(dataset);
+    detectDiagnoses();
+    detectDrugClasses();
+
+    // create "shadows", copies, to show n-group affiliation
+    populateShadows();
+
+}
+
+function getFilterOn() {
+    return filterOn;
+}
+
 // initialization
-export function resetState() {
+function resetState() {
     items = {};
     list1.source = [];
     list2.source = [];
-    diagnoses = {};
     diagnosisSet = {};
 
     shadows = {};
@@ -1091,22 +967,7 @@ export function resetState() {
     unique2 = [];
     identical = {};
     similar = {};
-    nextID = 0;
 
-    setAccepted([]);
-    setRejected([])
-    setUndecided([]);
-}
-
-/*
- * Given a dataset, populate patient information attributes for visible
- */
-function populatePatientInformation(dataset) {
-    let data = DATASETS[dataset];
-    patientFirstName = data.patientFirstName;
-    patientLastName = data.patientLastName;
-    patientAge = data.patientAge;
-    patientGender = data.patientGender;
 }
 
 /*
@@ -1159,8 +1020,6 @@ function populateLists(dataset) {
         items[item.id] = item;
     }
 
-    setUndecided(list1.source.concat(list2.source))
-    nextID = objId + 1; // indicate next id to use if adding new items
 }
 
 /*
@@ -1339,7 +1198,6 @@ function detectRelationships(dataset) {
     let tempSimilar = DATASETS[dataset].similar;
 
     if (tempIdentical || tempSimilar) {
-        numIdenticalSets = tempIdentical.length;
 
         for (let i = 0; i < tempIdentical.length; i++) {
             let set = tempIdentical[i];
@@ -1370,7 +1228,6 @@ function detectDrugClasses() {
     // drug classes have ids like: "dc0"
     let i = 0;
 
-    drugClasses = {};
     drugClassSet = {};
 
     for (let id in items) {
@@ -1401,7 +1258,6 @@ function detectDrugClasses() {
         }
 
     }
-    drugClasses = finalDrugClasses;
 }
 
 function detectDiagnoses() {
@@ -1411,7 +1267,6 @@ function detectDiagnoses() {
     let i = 0;
     // drug classes have ids like: "dc0"
 
-    diagnoses = {};
     diagnosisSet = {};
 
     for (let id in items) {
@@ -1442,7 +1297,6 @@ function detectDiagnoses() {
 
     }
 
-    diagnoses = tempDiagnoses;
 }
 
 // sort
@@ -1553,7 +1407,7 @@ function unifiedFilter(element, index, array) {
 }
 
 // helper object /////////////////////////////////////////////////////////
-export function ListItem(id, listID, name, attributes) {
+function ListItem(id, listID, name, attributes) {
     let visible = {};
 
     visible.id = id;
