@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 
-import "../Reconciliation.css";
+import "./Reconciliation.css";
 
 import { DATASET_DEFAULT, init } from "./ReconciliationModel";
 import { autoAnimateDefault, initAnimation, versionDefault } from "./ReconciliationAnimation";
