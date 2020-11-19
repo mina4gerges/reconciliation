@@ -877,9 +877,6 @@ export function getRelated(id, includeShadows) {
         let hash = {};
         let length = Math.min(identical.length, similar.length);
 
-        console.log('identical', identical)
-        console.log('similar', similar)
-
         // remove duplicates
         for (let i = 0; i < length; i++) {
             hash[identical[i]] = true;

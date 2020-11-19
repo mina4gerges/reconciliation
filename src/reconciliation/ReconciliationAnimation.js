@@ -800,7 +800,6 @@ function prepareHandlers() {
                         console.log(viewData);
                         console.log(positions);
                         console.log(NUM_ROWS);
-                        // console.log(model);
                         break;
 
                     case 89:
