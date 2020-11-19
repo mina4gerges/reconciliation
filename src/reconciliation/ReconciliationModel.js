@@ -638,7 +638,7 @@ let DATASETS = {
     }, // end of CHF1_M
 };
 
-export function init(dataset) {
+export const init = dataset => {
     resetState();
     loadData(dataset);
 }
@@ -667,7 +667,7 @@ export function init(dataset) {
  *     filter and sort the list
  *     bucket into groups and compute metadata in viewData (e.g. lengths)
  */
-export function viewDataModel(sort, filter) {
+export const viewDataModel = (sort, filter) => {
 
     let viewData = {};
 
@@ -796,7 +796,7 @@ export function viewDataModel(sort, filter) {
     viewData['groupRank'] = groupNames;
 
     // add method to get everything in rank order (for convenience)
-    viewData.getAll = function () {
+    viewData.getAll = () => {
         let ret = [];
         for (let i in viewData['groupRank']) {
             let groupName = viewData['groupRank'][i];
@@ -809,19 +809,19 @@ export function viewDataModel(sort, filter) {
     return viewData;
 }
 
-export function setGroupBy(newValue) {
+export const setGroupBy = newValue => {
     groupBy = newValue
 }
 
-export function getGroupBy() {
+export const getGroupBy = () => {
     return groupBy;
 }
 
-export function setFilterOn(newValue) {
+export const setFilterOn = newValue => {
     filterOn = newValue;
 }
 
-export function getIdentical(id, includeShadows, applyFilter) {
+export const getIdentical = (id, includeShadows, applyFilter) => {
     let tempIdentical = [];
     let checkID = items[id].isShadow ? getShadowed(id) : id;
 
@@ -841,7 +841,7 @@ export function getIdentical(id, includeShadows, applyFilter) {
     return applyFilter ? tempIdentical.filter(unifiedFilter) : tempIdentical;
 }
 
-export function getSimilar(id, includeShadows, applyFilter) {
+export const getSimilar = (id, includeShadows, applyFilter) => {
     let tempSimilar = [];
     let checkID = items[id].isShadow ? getShadowed(id) : id;
 
@@ -862,7 +862,7 @@ export function getSimilar(id, includeShadows, applyFilter) {
 }
 
 // given an id, return item ids that are related
-export function getRelated(id, includeShadows) {
+export const getRelated = (id, includeShadows) => {
     if (("" + id)[0] === 'd') {
         // this is for 3 column view for a drug class or diagnosis "group item"
         if (("" + id)[1] === 'c')
@@ -903,22 +903,22 @@ export function getRelated(id, includeShadows) {
     }
 }
 
-export function getRelatedSet(id, includeShadows) {
+export const getRelatedSet = (id, includeShadows) => {
     return getShadowSet(id).concat(getRelated(id, includeShadows));
 }
 
-export function getShadows(id) {
+export const getShadows = id => {
     if (id in itemsToShadows) {
         return itemsToShadows[id];
     }
     return [];
 }
 
-export function getShadowed(id) {
+export const getShadowed = id => {
     return shadowsToItems[id];
 }
 
-export function getShadowSet(id) {
+export const getShadowSet = id => {
     if (("" + id)[0] === 'd')// TODO diagnosis version doesn't support multigroup right now
         return [];
 
@@ -927,7 +927,7 @@ export function getShadowSet(id) {
     return [checkID].concat(getShadows(checkID));
 }
 
-function loadData(newDataset) {
+const loadData = newDataset => {
     dataset = newDataset;
 
     // populatePatientInformation(dataset);
@@ -942,12 +942,12 @@ function loadData(newDataset) {
 
 }
 
-function getFilterOn() {
+const getFilterOn = () => {
     return filterOn;
 }
 
 // initialization
-function resetState() {
+const resetState = () => {
     items = {};
     list1.source = [];
     list2.source = [];
@@ -970,7 +970,7 @@ function resetState() {
 /*
  * Given a dataset, populate the list1, list2, and undecided lists
  */
-function populateLists(dataset) {
+const populateLists = dataset => {
     let objId = 0, name = {}, attributes = {}, item = {};
 
     let data = DATASETS[dataset];
@@ -1027,7 +1027,7 @@ function populateLists(dataset) {
  * Also, continue intializing some item attributes
  *  (e.g. isShadow, isShadowed, groupByOffset)
  */
-function populateShadows() {
+const populateShadows = () => {
     // detect all possible groups
     let potentialGroups = {};
     let potentialGroupByAttributes = [];
@@ -1142,7 +1142,7 @@ function populateShadows() {
     }
 }
 
-function detectAttributes() {
+const detectAttributes = () => {
     attributes[ATTR_NAME] = {
         type: ATTR_TYPE_GENERAL,
         display: true
@@ -1187,7 +1187,7 @@ function detectAttributes() {
  * Given a dataset, extract relationship information between items and
  * populate relationship data structures
  */
-function detectRelationships(dataset) {
+const detectRelationships = dataset => {
 
     unique1 = DATASETS[dataset].unique1;
     unique2 = DATASETS[dataset].unique2;
@@ -1216,7 +1216,7 @@ function detectRelationships(dataset) {
     }
 }
 
-function detectDrugClasses() {
+const detectDrugClasses = () => {
     // hash to remove duplicates
     let tempDrugClasses = {};
 
@@ -1257,7 +1257,7 @@ function detectDrugClasses() {
     }
 }
 
-function detectDiagnoses() {
+const detectDiagnoses = () => {
     let tempDrugClasses = {};
     let tempDiagnoses = {};
     // hash to remove duplicates
@@ -1297,7 +1297,7 @@ function detectDiagnoses() {
 }
 
 // sort
-function groupThenSort(a, b) {
+const groupThenSort = (a, b) => {
     // if a groupBy is set (e.g. from controller) sort by the grouped by attribute
     let groupOrder = groupBy ? attributeSort(a, b, groupBy, attributes[groupBy].rank) : 0;
 
@@ -1316,7 +1316,7 @@ function groupThenSort(a, b) {
 }
 
 // sort id a and id b by a given attribute with (if given) ranking for that attribute
-function attributeSort(a, b, attribute, rank) {
+const attributeSort = (a, b, attribute, rank) => {
     let itemA = items[a];
     let itemB = items[b];
     let attributeA, attributeB;
@@ -1378,7 +1378,7 @@ function attributeSort(a, b, attribute, rank) {
 }
 
 // filter - remove decided items if option to remove after decisions is set
-function actionFilter(element) {
+const actionFilter = element => {
     let $item = ("#" + element);
 
     return !(afterAction === AFTER_ACTION_REMOVE && !$item.hasClass("undecided"));
@@ -1386,14 +1386,14 @@ function actionFilter(element) {
 }
 
 // filter - remove items based on a name filter
-function nameFilter(element) {
+const nameFilter = element => {
 
     return !(getFilterOn().length > 0 && items[element].name.toLowerCase().indexOf(getFilterOn().toLowerCase()) === -1);
 
 }
 
 // unified filted - apply action filter and name filter
-function unifiedFilter(element, index, array) {
+const unifiedFilter = (element, index, array) => {
     let keep = actionFilter(element, index, array);
 
     if (keep) {
@@ -1404,20 +1404,20 @@ function unifiedFilter(element, index, array) {
 }
 
 // helper object /////////////////////////////////////////////////////////
-function ListItem(id, listID, name, attributes) {
+const ListItem = (id, listID, name, attributes) => {
     let visible = {};
 
     visible.id = id;
     visible.listID = listID;
-    visible.__defineGetter__("name", function () {// TODO: note: defineGetter deprecated
+    visible.__defineGetter__("name", () => {// TODO: note: defineGetter deprecated
         return name[displayName ? displayName : "recorded"];
     });
     visible.attributes = attributes;
 
-    visible.getNames = function () {
+    visible.getNames = () => {
         return name;
     };
-    visible.setName = function (value) {
+    visible.setName = value => {
         name = value;
     };
 
@@ -1430,7 +1430,7 @@ function ListItem(id, listID, name, attributes) {
 // arrays. The default delimiter is the comma, but this
 // can be overriden in the second argument.
 // from http://stackoverflow.com/questions/1293147/javascript-code-to-parse-csv-data
-function CSVToArray(strData, strDelimiter) {
+const CSVToArray = (strData, strDelimiter) => {
     // Check to see if the delimiter is defined. If not,
     // then default to comma.
     strDelimiter = (strDelimiter || ",");
@@ -1533,7 +1533,7 @@ function CSVToArray(strData, strDelimiter) {
  *      }
  *  ]
  */
-function arrOfArrsToArrOfObjects(arrOfArrs) {
+const arrOfArrsToArrOfObjects = arrOfArrs => {
     // 0th row is attribute names in the object
     let ret = [];
 
