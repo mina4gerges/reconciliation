@@ -1,4 +1,4 @@
-import { toggleItem, toggleOffDelay, toggleOnDelay } from "./controller";
+import { toggleItem, toggleOffDelay, toggleOnDelay } from "./ReconciliationAnimation";
 
 let dataset = "";
 let shadows = {};

@@ -37,7 +37,7 @@ import {
     unique1,
     unique2,
     viewDataModel,
-} from './model';
+} from './ReconciliationModel';
 
 let LIST_1_INDEX = 1;
 let LIST_2_INDEX = 3;
@@ -187,7 +187,7 @@ let displayDetails = true;
 // for debugging - whether to print item information on hover
 let printHover = false;
 
-export function initController(dontRedraw, interfaceVersion, animate) {
+export function initAnimation(dontRedraw, interfaceVersion, animate) {
     // TODO might need string translation?
     version = interfaceVersion;
     autoAnimate = animate;
@@ -1438,8 +1438,6 @@ function transition(from, to, jumpToPosition) {
     setTimeout(function () {
         adjustAnimationControls(to);
         adjustBackdrop(to);
-        adjustCellDimensions();
-
         // TODO better organization? code should be refactored, since this was when there was only intended to be 1
         // version
         if (version !== VERSION_THREE_COLUMN && version !== VERSION_3COL_CLASSES)// for 3col version, headers don't change'
@@ -1869,26 +1867,6 @@ function adjustGroupLabels(from, to) {
         }
         $(".groups .label").addClass("show");
     }
-}
-
-function adjustCellDimensions() {
-    // adjust padding
-    // $("#reconciliation .item").css("padding-top", model.groupBy ? "1em" : "0.6em");
-    // $("#reconciliation .item").css("padding-bottom", model.groupBy ? 0 : "0.4em");
-
-    // adjust height
-    if (displayDetails) {
-        $("#reconciliation .item .detail").fadeIn();
-        // $("#reconciliation .item, #review td").height($.browser.mozilla ? "4.5em" : "4em");
-        $("#reconciliation .item, #review td").height("4em");
-    } else {
-        $("#reconciliation .item .detail").fadeOut();
-        // $("#reconciliation .item, #review td").height($.browser.mozilla ? "1.75em" : "1.25em");
-        $("#reconciliation .item, #review td").height("1.25em");
-    }
-    // $(".backdrop td").height($.browser.mozilla ? $("#reconciliation .item").outerHeight() : $("#reconciliation
-    // .item").height());
-    $(".backdrop td").height($("#reconciliation .item").height());
 }
 
 // given a state, adjust difference highlights on items

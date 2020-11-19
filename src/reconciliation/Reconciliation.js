@@ -2,14 +2,14 @@ import React, { useEffect } from "react";
 
 import "../Reconciliation.css";
 
-import { DATASET_DEFAULT, init } from "./model";
-import { autoAnimateDefault, initController, versionDefault } from "./controller";
+import { DATASET_DEFAULT, init } from "./ReconciliationModel";
+import { autoAnimateDefault, initAnimation, versionDefault } from "./ReconciliationAnimation";
 
 const Reconciliation = () => {
 
     useEffect(() => {
         init(DATASET_DEFAULT);
-        initController(false, versionDefault, autoAnimateDefault);
+        initAnimation(false, versionDefault, autoAnimateDefault);
     }, []);
 
     return <div id="reconciliation" className="content-text">
