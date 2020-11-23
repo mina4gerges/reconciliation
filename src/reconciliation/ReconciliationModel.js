@@ -1,8 +1,5 @@
-import { toggleItem, toggleOffDelay, toggleOnDelay } from "./ReconciliationAnimation";
-
 let dataset = "";
 let shadows = {};
-let filterOn = "";
 export let items = {};
 export let hidden = {};
 let itemsToShadows = {};
@@ -12,22 +9,21 @@ export let unique2 = [];
 export let identical = [];
 export let similar = [];
 export let attributes = {};
-export let diagnosisSet = {};
-export let drugClassSet = {};
-const FILTER_DELAY_SCALE = 4;
+let diagnosisSet = {};
+let drugClassSet = {};
 export let multigroup = false;
 export let shadowsToItems = {};
-export const DEFAULT_GROUP = "";
+const DEFAULT_GROUP = "";
 const sortBy = "__ATTR_NAME__";
+const ATTR_ROUTE = "__ATTR_ROUTE__";
 export const ATTR_NAME = "__ATTR_NAME__";
+export const ATTR_DOSE = "__ATTR_DOSE__";
+const ATTR_DIAGNOSES = "__ATTR_DIAGNOSES__";
+const ATTR_FREQUENCY = "__ATTR_FREQUENCY__";
 export const RECORDED_NAME = "recorded";
 export let displayName = RECORDED_NAME;
-export const ATTR_DOSE = "__ATTR_DOSE__";
-export const ATTR_ROUTE = "__ATTR_ROUTE__";
-const ATTR_DIAGNOSES = "__ATTR_DIAGNOSES__";
 export const ATTR_SUBITEM = "__ATTR_SUBITEM__";
 const ATTR_DRUG_CLASS = "__ATTR_DRUG_CLASS__";
-export const ATTR_FREQUENCY = "__ATTR_FREQUENCY__";
 const ATTR_DATE_STARTED = "__ATTR_DATE_STARTED__";
 const ATTR_INSTRUCTIONS = "__ATTR_INSTRUCTIONS__";
 const ATTR_TYPE_NUMERIC = "__ATTR_TYPE_NUMERIC__";
@@ -36,7 +32,6 @@ export let afterAction = "__AFTER_ACTION_GRAYOUT__";
 const ATTR_TYPE_CATEGORICAL = "__ATTR_TYPE_CATEGORICAL__";
 export const DATASET_DEFAULT = "__DATASET_APPENDECTOMY__";
 export const AFTER_ACTION_REMOVE = "__AFTER_ACTION_REMOVE__";
-export const AFTER_ACTION_GRAYOUT = "__AFTER_ACTION_GRAYOUT__";
 
 export const list1 = {
     id: "list0",
@@ -49,6 +44,103 @@ export const list2 = {
     name: "Hospital",
     source: []
 };
+
+export const getRelationShips = data => {
+
+    const dataArray = data.split('\n');
+
+    const dataArrayFiltered = dataArray.map(val => {
+        let n = val.split(',')
+        //remove id, origin AND drug classes,diagnoses
+        return n.splice(2, 8).join(',')
+    })
+
+    let newSimilar = [];
+    let newUnique1 = [];
+    let newUnique2 = [];
+    let newIdentical = [];
+
+    let allIds = [];
+    let similarIds = [];
+    let identicalIds = [];
+
+    dataArrayFiltered.reduce((currentArrayVal, nextValue, index) => {
+        allIds.push(index);
+
+        for (let i = 0; i < currentArrayVal.length; i++) {
+
+            //IDENTICAL
+            if (currentArrayVal[i].indexOf(nextValue) !== -1) {
+                identicalIds.push(i);
+                identicalIds.push(index);
+
+                newIdentical.push([i, index]);
+            }
+
+            //SIMILAR
+            else {
+                let currentMedInfo = currentArrayVal[i].split(',');
+                let nextMedInfo = nextValue.split(',');
+
+                let differences = [];
+                let similarName = false;
+                let similarDetails = false;
+
+                // GET SIMILAR NAME (index 0,1,2)
+                if (currentMedInfo[0] === nextMedInfo[0] || currentMedInfo[1] === nextMedInfo[1] || currentMedInfo[2] === nextMedInfo[2]) {
+                    similarName = true;
+
+                    if (!differences.find(val => val === ATTR_NAME))
+                        differences.push(ATTR_NAME)
+                }
+
+                // GET SIMILAR DOSE OR ROUTE OR FREQUENCY (index 3,4,5)
+                if (currentMedInfo[3] === nextMedInfo[3] || currentMedInfo[4] === nextMedInfo[4] || currentMedInfo[5] === nextMedInfo[5]) {
+                    similarDetails = true;
+
+                    if (currentMedInfo[3] === nextMedInfo[3])
+                        if (!differences.find(val => val === ATTR_DOSE))
+                            differences.push(ATTR_DOSE)
+
+                    if (currentMedInfo[5] === nextMedInfo[5])
+                        if (!differences.find(val => val === ATTR_FREQUENCY))
+                            differences.push(ATTR_FREQUENCY)
+                }
+
+                if (similarDetails && similarName)
+                    if (!newSimilar.find(val => val.items[0] === i && val.items[1] === index)) {
+                        similarIds.push(i);
+                        similarIds.push(index);
+
+                        newSimilar.push({ items: [i, index], differences })
+                    }
+            }
+        }
+
+        currentArrayVal.push(nextValue);
+
+        return currentArrayVal;
+    }, []);
+
+    // GET UNIQUE
+    for (let i = 0; i < allIds.length; i++) {
+        const id = allIds[i];
+
+        if (!similarIds.includes(id) && !identicalIds.includes(id))
+
+            if (dataArray[i].includes('list0'))
+                newUnique1.push(id);
+            else
+                newUnique2.push(id);
+    }
+
+    // console.log('newUnique1',newUnique1)
+    // console.log('newUnique2',newUnique2)
+    // console.log('newSimilar',newSimilar)
+    // console.log('newIdentical',newIdentical)
+
+    return { unique1: newUnique1, unique2: newUnique2, similar: newSimilar, identical: newIdentical };
+}
 
 // expected column names of csv format - all items have these attributes given in the csv
 let CSVC = {
@@ -64,24 +156,8 @@ let CSVC = {
     DRUG_CLASSES: "drug classes",
 };
 
-/*
- * Hard-coded datasets used by Twinlist, in future, should retrieve from other data source
- * Assumptions
- *      patient information contained in dataset
- *      item relationships present as a list of unique1, list of unique2, list of lists of identical items,
- *       similar items given as a list of objects where each object describes what items are similar and what
- *       the differences are
- *      csv format for data with specific column names (see CSVC)
- *      any addtional information not present in the csv format can be given as "other_data"
- *       Assumes the keys match the attribute constants used by Twinlist (e.g. see visible.ATTR_ROUTE, etc.)
- */
 let DATASETS = {
     "__DATASET_APPENDECTOMY__": {
-        // patient data
-        patientFirstName: "David",
-        patientLastName: "Doe",
-        patientAge: 55,
-        patientGender: "M",
 
         // item relationships
         unique1: [0, 5],
@@ -109,11 +185,6 @@ let DATASETS = {
     },  // end of APP
 
     "__DATASET_CONGESTIVE_HEART_FAILURE_1__": {
-        // patient data
-        patientFirstName: "Jim",
-        patientLastName: "Jones",
-        patientAge: 74,
-        patientGender: "M",
 
         // item relationships
         unique1: [3, 8],
@@ -166,11 +237,6 @@ let DATASETS = {
     }, // end of CHF1
 
     '__DATASET_CONGESTIVE_HEART_FAILURE_2__': {
-        // patient data
-        patientFirstName: "Mary",
-        patientLastName: "Smith",
-        patientAge: 65,
-        patientGender: "F",
 
         // item relationships
         unique1: [5, 6, 8],
@@ -220,11 +286,6 @@ let DATASETS = {
     }, // end of CHF2
 
     '__DATASET_PULMONARY_DISEASE_1__': {
-        // patient data
-        patientFirstName: "Penny",
-        patientLastName: "Pfeifer",
-        patientAge: 63,
-        patientGender: "F",
 
         // item relationships
         unique1: [0, 2, 5, 6, 10, 11, 12, 14],
@@ -296,11 +357,6 @@ let DATASETS = {
     }, // end of PD1
 
     '__DATASET_PULMONARY_DISEASE_2__': {
-        // patient data
-        patientFirstName: "Richard",
-        patientLastName: "White",
-        patientAge: 80,
-        patientGender: "M",
 
         // item relationships
         unique1: [0, 2, 3, 10, 11, 12, 15],
@@ -361,11 +417,6 @@ let DATASETS = {
     }, // end of PD2
 
     '__DATASET_OTHER_SIMPLE__': {
-        // patient data
-        patientFirstName: "John",
-        patientLastName: "Doe",
-        patientAge: 30,
-        patientGender: "M",
 
         // item relationships
         unique1: [4],
@@ -451,11 +502,6 @@ let DATASETS = {
     }, // end of O_COMPLEX
 
     '__DATASET_OTHER_EXTRA__': {
-        // patient data
-        patientFirstName: "Jim",
-        patientLastName: "Jones",
-        patientAge: 74,
-        patientGender: "M",
 
         // item relationships
         unique1: [2, 7],
@@ -520,11 +566,6 @@ let DATASETS = {
     // antibiotics)
 
     '__DATASET_PULMONARY_DISEASE_2_CORRECTED__': {
-        // patient data
-        patientFirstName: "Richard",
-        patientLastName: "White",
-        patientAge: 80,
-        patientGender: "M",
 
         // item relationships
         unique1: [0, 2, 3, 10, 11, 12, 15],
@@ -590,11 +631,6 @@ let DATASETS = {
     }, // end of PD2_C
 
     "__DATASET_CONGESTIVE_HEART_FAILURE_1_MODIFIED__": {
-        // patient data
-        patientFirstName: "Jim",
-        patientLastName: "Jones",
-        patientAge: 74,
-        patientGender: "M",
 
         // item relationships
         unique1: [3, 8],
@@ -684,27 +720,19 @@ export const viewDataModel = (sort, filter) => {
 
                 // update information about what is hidden
                 if (shadowID in hidden) {
-                    toggleItem(("#" + shadowID), toggleOnDelay, true);
                     if (hidden[shadowID])
                         delete hidden[shadowID];
                 }
             } else {
                 // otherwise, hide the shadow
-                toggleItem(("#" + shadowID), toggleOffDelay, false);
                 hidden[shadowID] = true;
             }
         }
     } else {
         // no multigroup + groupBy = no shadows
         for (let shadowID in shadows) {
-            toggleItem(("#" + shadowID), toggleOffDelay, false);
             hidden[shadowID] = true;
         }
-    }
-
-    // filter based on unified filter
-    if (filter) {
-        relevantIds = relevantIds.filter(unifiedFilter);
     }
 
     // sort data
@@ -798,36 +826,24 @@ export const viewDataModel = (sort, filter) => {
     // add method to get everything in rank order (for convenience)
     viewData.getAll = () => {
         let ret = [];
-        for (let i in viewData['groupRank']) {
+        Object.keys(viewData['groupRank']).forEach(i => {
             let groupName = viewData['groupRank'][i];
             if (viewData['groups'].hasOwnProperty(groupName))
                 ret = ret.concat(viewData['groups'][groupName]);
-        }
+        })
         return ret;
     };
 
     return viewData;
 }
 
-export const setGroupBy = newValue => {
-    groupBy = newValue
-}
-
-export const getGroupBy = () => {
-    return groupBy;
-}
-
-export const setFilterOn = newValue => {
-    filterOn = newValue;
-}
-
-export const getIdentical = (id, includeShadows, applyFilter) => {
+export const getIdentical = (id, includeShadows) => {
     let tempIdentical = [];
     let checkID = items[id].isShadow ? getShadowed(id) : id;
 
-    if (checkID in identical) {
+    if (checkID in identical)
         tempIdentical = identical[checkID].slice();
-    }
+
     tempIdentical.splice(tempIdentical.indexOf(parseFloat(checkID)), 1);
 
     if (includeShadows) {
@@ -838,16 +854,16 @@ export const getIdentical = (id, includeShadows, applyFilter) => {
         }
         tempIdentical = tempIdentical.concat(shadows);
     }
-    return applyFilter ? tempIdentical.filter(unifiedFilter) : tempIdentical;
+    return tempIdentical;
 }
 
-export const getSimilar = (id, includeShadows, applyFilter) => {
+export const getSimilar = (id, includeShadows) => {
     let tempSimilar = [];
     let checkID = items[id].isShadow ? getShadowed(id) : id;
 
-    if (checkID in similar) {
+    if (checkID in similar)
         tempSimilar = similar[checkID].items.slice();
-    }
+
     tempSimilar.splice(tempSimilar.indexOf(parseFloat(checkID)), 1);
 
     if (includeShadows) {
@@ -858,22 +874,23 @@ export const getSimilar = (id, includeShadows, applyFilter) => {
         }
         tempSimilar = tempSimilar.concat(shadows);
     }
-    return applyFilter ? tempSimilar.filter(unifiedFilter) : tempSimilar;
+    return tempSimilar;
 }
 
 // given an id, return item ids that are related
 export const getRelated = (id, includeShadows) => {
     if (("" + id)[0] === 'd') {
         // this is for 3 column view for a drug class or diagnosis "group item"
+
+        // drug class
         if (("" + id)[1] === 'c')
             return drugClassSet[id];
-        // drug class
+        // diagnosis
         else
             return diagnosisSet[id];
-        // diagnosis
     } else {
-        let identical = getIdentical(id, includeShadows, true);
-        let similar = getSimilar(id, includeShadows, true);
+        let identical = getIdentical(id, includeShadows);
+        let similar = getSimilar(id, includeShadows);
         let hash = {};
         let length = Math.min(identical.length, similar.length);
 
@@ -883,15 +900,14 @@ export const getRelated = (id, includeShadows) => {
             hash[similar[i]] = true;
         }
 
-        if (length < identical.length) {
+        if (length < identical.length)
             for (let i = 0; i < identical.length; i++) {
                 hash[identical[i]] = true;
             }
-        } else if (length < similar.length) {
+        else if (length < similar.length)
             for (let i = 0; i < similar.length; i++) {
                 hash[similar[i]] = true;
             }
-        }
 
         // convert results into array format
         let related = [];
@@ -899,6 +915,7 @@ export const getRelated = (id, includeShadows) => {
         for (let hashedID in hash) {
             related.push(hashedID);
         }
+
         return related;
     }
 }
@@ -908,9 +925,9 @@ export const getRelatedSet = (id, includeShadows) => {
 }
 
 export const getShadows = id => {
-    if (id in itemsToShadows) {
+    if (id in itemsToShadows)
         return itemsToShadows[id];
-    }
+
     return [];
 }
 
@@ -918,8 +935,8 @@ export const getShadowed = id => {
     return shadowsToItems[id];
 }
 
-export const getShadowSet = id => {
-    if (("" + id)[0] === 'd')// TODO diagnosis version doesn't support multigroup right now
+const getShadowSet = id => {
+    if (("" + id)[0] === 'd')
         return [];
 
     let checkID = items[id].isShadow ? getShadowed(id) : id;
@@ -930,8 +947,6 @@ export const getShadowSet = id => {
 const loadData = newDataset => {
     dataset = newDataset;
 
-    // populatePatientInformation(dataset);
-    populateLists(dataset);
     detectAttributes();
     detectRelationships(dataset);
     detectDiagnoses();
@@ -939,11 +954,6 @@ const loadData = newDataset => {
 
     // create "shadows", copies, to show n-group affiliation
     populateShadows();
-
-}
-
-const getFilterOn = () => {
-    return filterOn;
 }
 
 // initialization
@@ -964,13 +974,10 @@ const resetState = () => {
     unique2 = [];
     identical = {};
     similar = {};
-
 }
 
-/*
- * Given a dataset, populate the list1, list2, and undecided lists
- */
-const populateLists = dataset => {
+// Given a dataset, populate the list1, list2, and undecided lists
+export const populateLists = dataset => {
     let objId = 0, name = {}, attributes = {}, item = {};
 
     let data = DATASETS[dataset];
@@ -999,24 +1006,16 @@ const populateLists = dataset => {
         attributes[ATTR_DRUG_CLASS] = obj[CSVC.DRUG_CLASSES];
         attributes[ATTR_DIAGNOSES] = obj[CSVC.DIAGNOSES];
 
-        // grab other data if present
-        if (data.other_data && data.other_data.hasOwnProperty(objId)) {
-            // add information for each optional attribute
-            for (let key in data.other_data[objId]) {
-                attributes[key] = data.other_data[objId][key];
-            }
-        }
-
         item = ListItem(objId, obj[CSVC.ORIGIN][0], name, attributes);
 
-        if (item.listID === list1.id) {
+        if (item.listID === list1.id)
             list1.source.push(item.id);
-        } else {
+        else
             list2.source.push(item.id);
-        }
+
         items[item.id] = item;
     }
-
+    return items;
 }
 
 /*
@@ -1033,9 +1032,9 @@ const populateShadows = () => {
     let potentialGroupByAttributes = [];
 
     for (let attribute in attributes) {
-        if (attributes[attribute].type === ATTR_TYPE_CATEGORICAL) {
+        if (attributes[attribute].type === ATTR_TYPE_CATEGORICAL)
             potentialGroupByAttributes.push(attribute);
-        }
+
     }
 
     for (let id in items) {
@@ -1049,9 +1048,9 @@ const populateShadows = () => {
                 for (let j = 0; j < values.length; j++) {
                     let value = values[j];
 
-                    if (potentialGroups[value] === undefined) {
+                    if (potentialGroups[value] === undefined)
                         potentialGroups[value] = [];
-                    }
+
                     potentialGroups[value].push(id);
                 }
             }
@@ -1060,9 +1059,8 @@ const populateShadows = () => {
 
     // slight optimization: remove 1-item groups when multigrouping
     for (let groupByAttribute in potentialGroups) {
-        if (potentialGroups[groupByAttribute].length < 2) {
+        if (potentialGroups[groupByAttribute].length < 2)
             delete potentialGroups[groupByAttribute];
-        }
     }
 
     // create shadows
@@ -1084,7 +1082,7 @@ const populateShadows = () => {
                 if (attributeName in item.attributes) {
                     let values = item.attributes[attributeName];
 
-                    if (values.length > 1) {
+                    if (values.length > 1)
                         /*
                          * Prepare shadows; these "shadows" will only appear
                          * when the user groups by this particular
@@ -1103,9 +1101,8 @@ const populateShadows = () => {
                             let value = values[i];
 
                             // don't create unnecessary shadows
-                            if (potentialGroups[value] === undefined) {
+                            if (potentialGroups[value] === undefined)
                                 continue;
-                            }
 
                             // convention: originalID_shadowID
                             let shadowID = id + "_" + (i - 1);
@@ -1125,17 +1122,14 @@ const populateShadows = () => {
                             items[shadowID] = shadow;
 
                             // hash from original to shadow
-                            if (id in itemsToShadows) {
+                            if (id in itemsToShadows)
                                 itemsToShadows[id].push(shadowID);
-                            } else {
+                            else
                                 itemsToShadows[id] = [shadowID];
-                            }
 
                             // hash from shadow to original
                             shadowsToItems[shadowID] = id;
-
                         }
-                    }
                 }
             }
         }
@@ -1227,12 +1221,12 @@ const detectDrugClasses = () => {
 
     drugClassSet = {};
 
-    for (let id in items) {
+    Object.keys(items).forEach(id => {
         let item = items[id];
 
         let drugClasses = item["attributes"][ATTR_DRUG_CLASS];
 
-        for (let drugClassIndex in drugClasses) {
+        Object.keys(drugClasses).forEach(drugClassIndex => {
             let drugClass = drugClasses[drugClassIndex];
 
             // look up drug class id if there (to add this item to the set)
@@ -1247,14 +1241,13 @@ const detectDrugClasses = () => {
                 finalDrugClasses[dcid] = drugClass;
                 drugClassSet[dcid] = [];
                 tempDrugClasses[drugClass] = dcid;
-            } else {
+            } else
                 dcid = tempDrugClasses[drugClass];
-            }
 
             drugClassSet[dcid].push(id);
-        }
+        })
 
-    }
+    })
 }
 
 const detectDiagnoses = () => {
@@ -1266,13 +1259,12 @@ const detectDiagnoses = () => {
 
     diagnosisSet = {};
 
-    for (let id in items) {
+    Object.keys(items).forEach(id => {
         let item = items[id];
 
         let diagnoses = item["attributes"][ATTR_DIAGNOSES];
 
-        // TODO cleaning - rename
-        for (let drugClassIndex in diagnoses) {
+        Object.keys(diagnoses).forEach(drugClassIndex => {
             let drugClass = diagnoses[drugClassIndex];
 
             // look up drug class id if there (to add this item to the set)
@@ -1285,15 +1277,12 @@ const detectDiagnoses = () => {
                 tempDiagnoses[dcid] = drugClass;
                 diagnosisSet[dcid] = [];
                 tempDrugClasses[drugClass] = dcid;
-            } else {
+            } else
                 dcid = tempDrugClasses[drugClass];
-            }
 
             diagnosisSet[dcid].push(id);
-        }
-
-    }
-
+        })
+    })
 }
 
 // sort
@@ -1325,17 +1314,15 @@ const attributeSort = (a, b, attribute, rank) => {
         attributeA = itemA.name.toLowerCase();
         attributeB = itemB.name.toLowerCase();
     } else {
-        if (itemA.attributes[attribute]) {
+        if (itemA.attributes[attribute])
             attributeA = itemA.attributes[attribute][(multigroup ? itemA.groupByOffset : 0)];
-        } else {
+        else
             attributeA = undefined;
-        }
 
-        if (itemB.attributes[attribute]) {
+        if (itemB.attributes[attribute])
             attributeB = itemB.attributes[attribute][(multigroup ? itemB.groupByOffset : 0)];
-        } else {
+        else
             attributeB = undefined;
-        }
     }
 
     // check undefined, i.e. missing attributes
@@ -1360,50 +1347,22 @@ const attributeSort = (a, b, attribute, rank) => {
         let rankA = rank.indexOf(attributeA);
         let rankB = rank.indexOf(attributeB);
 
-        if (rankA < rankB) {
+        if (rankA < rankB)
             return -1;
-        } else if (rankA > rankB) {
+        else if (rankA > rankB)
             return 1;
-        }
-        // if ranks equal, default to alphanumeric order (below)
+
     }
 
-    if (attributeA < attributeB) {
+    if (attributeA < attributeB)
         return -1;
-    } else if (attributeA > attributeB) {
+    else if (attributeA > attributeB)
         return 1;
-    } else {
+    else
         return 0;
-    }
-}
-
-// filter - remove decided items if option to remove after decisions is set
-const actionFilter = element => {
-    let $item = ("#" + element);
-
-    return !(afterAction === AFTER_ACTION_REMOVE && !$item.hasClass("undecided"));
 
 }
 
-// filter - remove items based on a name filter
-const nameFilter = element => {
-
-    return !(getFilterOn().length > 0 && items[element].name.toLowerCase().indexOf(getFilterOn().toLowerCase()) === -1);
-
-}
-
-// unified filted - apply action filter and name filter
-const unifiedFilter = (element, index, array) => {
-    let keep = actionFilter(element, index, array);
-
-    if (keep) {
-        keep = nameFilter(element, index, array);
-    }
-    toggleItem(("#" + element), keep ? toggleOnDelay * FILTER_DELAY_SCALE : toggleOffDelay / FILTER_DELAY_SCALE, keep);
-    return keep;
-}
-
-// helper object /////////////////////////////////////////////////////////
 const ListItem = (id, listID, name, attributes) => {
     let visible = {};
 
@@ -1469,23 +1428,16 @@ const CSVToArray = (strData, strDelimiter) => {
         // (is not the start of string) and if it matches
         // field delimiter. If id does not, then we know
         // that this delimiter is a row delimiter.
-        if (
-            strMatchedDelimiter.length &&
-            (strMatchedDelimiter !== strDelimiter)
-        ) {
-
+        if (strMatchedDelimiter.length && (strMatchedDelimiter !== strDelimiter))
             // Since we have reached a new row of data,
             // add an empty row to our data array.
             arrData.push([]);
-
-        }
 
         // Now that we have our delimiter out of the way,
         // let's check to see which kind of value we
         // captured (quoted or unquoted).
         let strMatchedValue;
-        if (arrMatches[2]) {
-
+        if (arrMatches[2])
             // We found a quoted value. When we capture
             // this value, unescape any double quotes.
             strMatchedValue = arrMatches[2].replace(
@@ -1493,12 +1445,9 @@ const CSVToArray = (strData, strDelimiter) => {
                 "\""
             );
 
-        } else {
-
+        else
             // We found a non-quoted value.
             strMatchedValue = arrMatches[3];
-
-        }
 
         // Now that we have our value string, let's add
         // it to the data array.
@@ -1506,7 +1455,7 @@ const CSVToArray = (strData, strDelimiter) => {
     }
 
     // Return the parsed data.
-    return (arrData);
+    return arrData;
 }
 
 /*
@@ -1543,7 +1492,6 @@ const arrOfArrsToArrOfObjects = arrOfArrs => {
         let currentArr = arrOfArrs[i];
         let obj = {};
         for (let j = 0; j < currentArr.length; j++) {
-
             obj[attributeArr[j]] = currentArr[j].split(",");
         }
         ret.push(obj);
