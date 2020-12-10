@@ -1,26 +1,29 @@
-.top {
-    top: 5%;
+#reconciliation {
+    width: 100%;
+    height: 100%;
 }
 
-.scrolling_content {
+#reconciliation .scrolling_content {
     position: absolute;
-    overflow-x: hidden;
-    height: 100%; /* fallback */
     width: 100%;
-
+    height: calc(100% - 80px);
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
 }
 
-.backdrop {
-    border-bottom: 0.3em solid #f3f3f3;
+#reconciliation .backdrop-header {
+    width: 100%;
+    height: 80px;
+}
+
+#reconciliation .backdrop-body {
     width: 100%;
     height: 100%;
 }
 
-.backdrop th {
+#reconciliation .backdrop th {
     color: #f0f0f0;
     font-weight: normal;
     text-align: left;
@@ -29,230 +32,72 @@
     width: 20%;
 }
 
-.backdrop th:first-child {
+#reconciliation .backdrop th:first-child {
     border-top-left-radius: 0.2em;
 }
 
-.backdrop th:last-child {
+#reconciliation .backdrop th:last-child {
     border-top-right-radius: 0.2em;
 }
 
-.col-header .action ul, .col-header .action li {
-    display: inline;
-}
-
-.col-header .action li:first-child::after {
-    opacity: 0.6;
-    content: " |";
-}
-
-.col-header .action li:last-child {
-    float: right;
-}
-
-.col-header .action a {
-    opacity: 0.6;
-}
-
-.col-header .action a:hover {
-    opacity: 1;
-}
-
-.reject {
-    margin-left: 0.3em;
-}
-
-.clear {
-    margin: 0 0.5em;
-}
-
-.backdrop tr {
+#reconciliation .backdrop tr {
     -webkit-transition: background 0.8s ease-in-out;
     -moz-transition: background 0.8s ease-in-out;
     -o-transition: background 0.8s ease-in-out;
     transition: background 0.8s ease-in-out;
 }
 
-.backdrop td, .item .header, .item .detail, .diagnosis .header {
-    white-space: nowrap;
+#reconciliation .backdrop td, .item .header, .item .detail {
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.backdrop td, .item {
+#reconciliation .header .med-active-ingredients {
+    font-size: 12px;
+}
+
+#reconciliation .item {
     width: 18%;
     padding: 5px;
-
-    -webkit-transition: background 0.8s;
-    -moz-transition: background 0.8s;
-    -o-transition: background 0.8s;
-    transition: background 0.8s;
-}
-
-.diagnosis {
-    width: 18%;
-    height: 1.5em;
-    padding: 0.6em 0.5em 0.4em 0.5em;
-    -webkit-transition: background 0.8s;
-    -moz-transition: background 0.8s;
-    -o-transition: background 0.8s;
-    transition: background 0.8s;
-}
-
-.shadow {
-    color: #bbbbbb;
-    opacity: 0.6;
-    z-index: 1; /* > 0 to be above the backdrop */
-}
-
-.third-col-anchor-hover {
-    background: rgb(223, 243, 235);
-    border-radius: 0.2em;
-    color: #333333;
-}
-
-.diagnosis-hover {
-    background: rgb(21, 99, 77);
-    border-radius: 0.2em;
-    color: #f0f0f0;
-}
-
-.modified .name::before {
-    content: "*";
-    margin-right: 0.5em;
-}
-
-.difference {
-    -webkit-transition: background 0.4s;
-    -moz-transition: background 0.4s;
-    -o-transition: background 0.4s;
-    transition: background 0.4s;
-}
-
-.highlight {
-    color: #333333;
-    background: #e9c46a;
-    border: 1px solid #e9c46a;
-    border-radius: 10px;
-    -webkit-transition: all 0.4s;
-    -moz-transition: all 0.4s;
-    -o-transition: all 0.4s;
-    transition: all 0.4s;
-}
-
-.groups .label {
-    color: #333333;
-    font-size: 60%;
-    font-style: italic;
-    position: absolute;
-
-    opacity: 0;
-
-    -webkit-transition: all 0.8s;
-    -moz-transition: all 0.8s;
-    -o-transition: all 0.8s;
-    transition: all 0.8s;
-}
-
-.diagnoses .diagnosis {
-    position: absolute;
-}
-
-.groups .label.show {
-    opacity: 1;
-}
-
-.label {
-    color: #f0f0f0;
-    border-top-left-radius: 0.2em;
-    border-bottom-left-radius: 0.2em;
-}
-
-#modify .action, #review .action {
-    position: absolute;
-    right: 5%;
-
-    top: 70%;
-    width: 35%;
-}
-
-.response {
-    font-size: 95%;
-    opacity: 0;
-
-    -webkit-transition: all 0.4s;
-    -moz-transition: all 0.4s;
-    -o-transition: all 0.4s;
-    transition: all 0.4s;
-}
-
-.response .back::before {
-    content: "[ ";
-}
-
-.response .back::after {
-    content: " ]";
-}
-
-.show {
-    opacity: 1;
-    -webkit-transform: translate(0, 0);
-    -moz-transform: translate(0, 0);
-    -ms-transform: translate(0, 0);
-    -o-transform: translate(0, 0);
-    transform: translate(0, 0);
-}
-
-#reconciliation,
-.backdrop.backdrop-body tr,
-.backdrop.backdrop-body td {
-    background: white !important;
-}
-
-.item {
     color: white;
-    padding: 15px 0;
     text-align: center;
     border-radius: 15px;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
     background-image: linear-gradient(to right bottom, #118ab2, #1999c2);
+
+    transition: background 0.8s;
+    -o-transition: background 0.8s;
+    -moz-transition: background 0.8s;
+    -webkit-transition: background 0.8s;
 }
 
-.item .name {
+#reconciliation .item .name {
     font-weight: bold;
 }
 
-.item .detail span {
+#reconciliation .item .detail span {
     font-size: 80%;
     margin: 0 0.3em;
     padding: 0 0.2em;
 }
 
-.bg-accent .col-header {
-    color: white;
-    padding: 10px;
-    font-weight: bold;
-    text-align: center;
-    border-radius: 10px;
-    background-image: linear-gradient(to right bottom, #073b4c, #09485e);
-}
-
-.item.undecided-hover {
+#reconciliation .item.undecided-hover {
     color: black;
     cursor: pointer;
     background-image: linear-gradient(to right bottom, #ffd166, #f8d581);
 }
 
-.item.accepted {
-    background-image: linear-gradient(to right bottom, #06d6a0, #0af1b4);
+#reconciliation .item.accepted {
+    background: #48C774;
 }
 
-.item.rejected {
+#reconciliation .item.rejected {
+    background: red;
     text-decoration: line-through;
-    background-image: linear-gradient(to right bottom, #ff003f, #ff2860);
 }
 
-.item, .diagnosis {
+#reconciliation .item {
     position: absolute;
 
     -webkit-transition: -webkit-transform 0.2s ease-in-out,
@@ -267,7 +112,7 @@
     z-index: 10; /* > 1 to be above shadows (ghosts) */
 }
 
-.item:hover, .item-hover, .diagnosis:hover {
+#reconciliation .item:hover, .item-hover {
     -webkit-transform: translateX(2%);
     -moz-transform: translateX(2%);
     -ms-transform: translateX(2%);
@@ -277,11 +122,103 @@
     text-overflow: ellipsis;
 }
 
-.keep,
-.reject,
-.clear {
+#reconciliation .col-header .action ul, .col-header .action li {
+    display: inline;
+}
+
+#reconciliation .col-header .action li:first-child::after {
+    opacity: 0.6;
+    content: " | ";
+}
+
+#reconciliation .col-header .action li:last-child {
+    float: right;
+}
+
+#reconciliation .col-header .action a {
+    opacity: 0.6;
+}
+
+#reconciliation .col-header .action a:hover {
+    opacity: 1;
+}
+
+#reconciliation .bg-accent .col-header {
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 10px;
+    background-image: linear-gradient(to right bottom, #073b4c, #09485e);
+}
+
+#reconciliation .highlight {
+    color: #333333;
+    background: #e9c46a;
+    border: 1px solid #e9c46a;
+    border-radius: 10px;
+    -webkit-transition: all 0.4s;
+    -moz-transition: all 0.4s;
+    -o-transition: all 0.4s;
+    transition: all 0.4s;
+}
+
+#reconciliation #modify .action, #review .action {
+    position: absolute;
+    right: 5%;
+
+    top: 70%;
+    width: 35%;
+}
+
+#reconciliation .response {
+    font-size: 95%;
+    opacity: 0;
+
+    -webkit-transition: all 0.4s;
+    -moz-transition: all 0.4s;
+    -o-transition: all 0.4s;
+    transition: all 0.4s;
+}
+
+#reconciliation .response .back::before {
+    content: "[ ";
+}
+
+#reconciliation .response .back::after {
+    content: " ]";
+}
+
+#reconciliation .content {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 65px);
+}
+
+#reconciliation .keep,
+#reconciliation .reject,
+#reconciliation .clear {
     color: white;
     font-size: 12px;
     text-decoration: none;
 }
 
+#reconciliation .reconciliation-top-bar {
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    background: #264653;
+}
+
+#reconciliation .reconciliation-button {
+    border: none;
+    color: white;
+    margin: 0 5px;
+    font-weight: bold;
+    border-radius: 10px;
+}
+
+#reconciliation .reconciliation-button.selected {
+    background: #818a91;
+    border-color: #818a91;
+}

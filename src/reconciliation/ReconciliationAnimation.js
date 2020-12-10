@@ -3,9 +3,7 @@ import React from "react";
 import {
     AFTER_ACTION_REMOVE,
     afterAction,
-    ATTR_DOSE,
     ATTR_NAME,
-    ATTR_SUBITEM,
     attributes,
     displayName,
     getIdentical,
@@ -229,24 +227,25 @@ export const populateBackdrop = () => {
                 break
         }
 
-        for (let action in actions) {
+        // for (let action in actions) {
+        Object.keys(actions).forEach(action => {
 
             ul.push(
-                <li id={`${action}-${i}`}>
+                <li key={`${action}-${i}`}>
                     <a href='#fake' className={action} data-dst={actions[action]} data-index={i}
                        onClick={processColumn}>
                         {action === "clear" ? action : `${action} rest`}
                     </a>
                 </li>
             );
-        }
+        })
 
         let action = <div className='action'>
             <ul>{ul}</ul>
         </div>
 
         tr.push(
-            <th>
+            <th key={`th-reconciliation-${i}`}>
                 <div className='col-header'>{name}{action}</div>
             </th>
         )
@@ -280,7 +279,7 @@ export const populateItems = newItems => {
 
         let detail = []
 
-        Object.keys(item.attributes).forEach(attribute => {
+        Object.keys(item.attributes).forEach((attribute, key) => {
 
             if (attributes[attribute].display) {
                 let detailClassNames = [];
@@ -290,7 +289,7 @@ export const populateItems = newItems => {
                         detailClassNames.push('difference');
 
                 detail.push(
-                    <span className={detailClassNames.join(" ")}>
+                    <span key={`detail-${id}-${key}`} className={detailClassNames.join(" ")}>
                         {item.attributes[attribute].toString()}
                 </span>
                 )
@@ -298,12 +297,19 @@ export const populateItems = newItems => {
         })
 
         displayItems.push(
-            <div id={id} className={`item undecided ${item.isShadow ? 'shadow' : ''}`} onMouseOut={mouseoutHandler}
+            <div id={id} key={`item-${id}`}
+                 onMouseOut={mouseoutHandler}
+                 className={`item undecided ${item.isShadow ? 'shadow' : ''}`}
                  onMouseOver={mouseoverHandler(id)} onMouseDown={mousedownHandler(id)}>
                 <div className='header'>
-                    <span className={itemClassNames.join(" ")}>{
-                        item.name}
-                    </span>
+                    <div className={itemClassNames.join(" ")}>
+                        <div className='med-name'>
+                            {item.name}
+                        </div>
+                        <div className='med-active-ingredients'>
+                            {` [${item.activeIngredients}]`}
+                        </div>
+                    </div>
                 </div>
                 <div className='detail'>
                     {detail}
@@ -381,7 +387,7 @@ const calculatePositions = () => {
     let numRowsPrev = {};
 
     // clear rows
-    positions = {};
+    let newPositions = {};
 
     // for each group, in rank order:
     Object.keys(viewData.groupRank).forEach(groupKeyIndex => {
@@ -444,13 +450,13 @@ const calculatePositions = () => {
 
             // either get existing positions data (may have been partially
             // calculated from out of order processing) or initialize
-            positions[id] = positions[id] || {};
+            newPositions[id] = newPositions[id] || {};
 
             // which side is this item on (if non-identical) - e.g. left or right side
             let side = items[id].listID === list1.id ? -1 : 1;
 
             // for every item, set the row and column in the separate state
-            positions[id][STATE_SEPARATE] = {
+            newPositions[id][STATE_SEPARATE] = {
                 'row': separateNextRow[side.toString()]++, // set equal to value before increment
                 'col': LIST_IDENTICAL_INDEX + side,         // Note: assumed identical column in center
             }
@@ -472,7 +478,8 @@ const calculatePositions = () => {
                     // calculate similar and compact states' row,col for
                     //  each identical item
 
-                    for (let j in identicalSet) {
+                    // for (let j in identicalSet) {
+                    Object.keys(identicalSet).forEach(j => {
                         let identicalItemId = identicalSet[j];
 
                         // skip processing of things not in same group
@@ -481,10 +488,10 @@ const calculatePositions = () => {
                         if (group.indexOf(identicalItemId) >= 0) {
 
                             // (already exists if identicalItemId == id)
-                            positions[identicalItemId] = positions[identicalItemId] || {};
+                            newPositions[identicalItemId] = newPositions[identicalItemId] || {};
 
                             // reference to "identical item position data" (abbrev.)
-                            let iIPD = positions[identicalItemId];
+                            let iIPD = newPositions[identicalItemId];
 
                             // in similar (pre compact) state - will all be
                             //  at the same row, in identical column and
@@ -508,7 +515,7 @@ const calculatePositions = () => {
                             // mark item as already processed
                             processed[identicalItemId] = true;
                         }
-                    }
+                    })
 
                     // every identical item uses up one entire row in similar state
                     similarNextRow["-1"]++;
@@ -525,14 +532,14 @@ const calculatePositions = () => {
 
                 // calculate this item's identical state and unique state positions
                 // (same as its position in separate)
-                positions[id][STATE_IDENTICAL] = {
-                    'row': positions[id][STATE_SEPARATE].row,
-                    'col': positions[id][STATE_SEPARATE].col
+                newPositions[id][STATE_IDENTICAL] = {
+                    'row': newPositions[id][STATE_SEPARATE].row,
+                    'col': newPositions[id][STATE_SEPARATE].col
                 };
 
-                positions[id][STATE_UNIQUE] = {
-                    'row': positions[id][STATE_SEPARATE].row,
-                    'col': positions[id][STATE_SEPARATE].col
+                newPositions[id][STATE_UNIQUE] = {
+                    'row': newPositions[id][STATE_SEPARATE].row,
+                    'col': newPositions[id][STATE_SEPARATE].col
                 };
 
                 if (!processed[id]) {
@@ -548,15 +555,16 @@ const calculatePositions = () => {
                     // save to figure out afterwards how many rows consumed
                     let lenBeforeSet = similarNextRow["-1"];
 
-                    for (let j in similarSet) {
+                    // for (let j in similarSet) {
+                    Object.keys(similarSet).forEach(j => {
                         let similarItemId = similarSet[j];
 
                         if (group.indexOf(similarItemId) >= 0) {
 
-                            positions[similarItemId] = positions[similarItemId] || {};
+                            newPositions[similarItemId] = newPositions[similarItemId] || {};
 
                             // reference to "similar item position data" (abbrev.)
-                            let sIPD = positions[similarItemId];
+                            let sIPD = newPositions[similarItemId];
                             let simSide = items[similarItemId].listID === list1.id ? -1 : 1;
 
                             sIPD[STATE_SIMILAR] = {
@@ -572,7 +580,7 @@ const calculatePositions = () => {
 
                             processed[similarItemId] = true;
                         } // else don't process yet - not in same group
-                    }
+                    })
 
                     // re-align next similar positions (for similar and compact state)
                     let newSimilarStart = Math.max(similarNextRow["-1"], similarNextRow["1"]);
@@ -592,20 +600,20 @@ const calculatePositions = () => {
                 // unique
 
                 // identical state is same as separate state
-                positions[id][STATE_IDENTICAL] = positions[id][STATE_IDENTICAL] || {};
+                newPositions[id][STATE_IDENTICAL] = newPositions[id][STATE_IDENTICAL] || {};
 
-                positions[id][STATE_IDENTICAL] = positions[id][STATE_SEPARATE];
+                newPositions[id][STATE_IDENTICAL] = newPositions[id][STATE_SEPARATE];
 
-                positions[id][STATE_SIMILAR] = {
+                newPositions[id][STATE_SIMILAR] = {
                     'row': similarNextRow[side]++,
                     'col': LIST_IDENTICAL_INDEX + (2 * side)
                 };
                 similarNextRow[(-1 * side).toString()]++;
                 // align similar next rows
 
-                positions[id][STATE_UNIQUE] = positions[id][STATE_SIMILAR];
+                newPositions[id][STATE_UNIQUE] = newPositions[id][STATE_SIMILAR];
 
-                positions[id][STATE_COMPACT] = {
+                newPositions[id][STATE_COMPACT] = {
                     'row': compactNextRow.unique[side.toString()]++,
                     'col': LIST_IDENTICAL_INDEX + (2 * side)
                 };
@@ -615,13 +623,16 @@ const calculatePositions = () => {
             }
 
             // update maximum num rows
-            NUM_ROWS[STATE_SEPARATE] = Math.max(NUM_ROWS[STATE_SEPARATE], positions[id][STATE_SEPARATE]['row'] + 1);
-            NUM_ROWS[STATE_IDENTICAL] = Math.max(NUM_ROWS[STATE_IDENTICAL], positions[id][STATE_IDENTICAL]['row'] + 1);
-            NUM_ROWS[STATE_UNIQUE] = Math.max(NUM_ROWS[STATE_UNIQUE], positions[id][STATE_UNIQUE]['row'] + 1);
-            NUM_ROWS[STATE_SIMILAR] = Math.max(NUM_ROWS[STATE_SIMILAR], positions[id][STATE_SIMILAR]['row'] + 1);
-            NUM_ROWS[STATE_COMPACT] = Math.max(NUM_ROWS[STATE_COMPACT], positions[id][STATE_COMPACT]['row'] + 1);
+            NUM_ROWS[STATE_SEPARATE] = Math.max(NUM_ROWS[STATE_SEPARATE], newPositions[id][STATE_SEPARATE]['row'] + 1);
+            NUM_ROWS[STATE_IDENTICAL] = Math.max(NUM_ROWS[STATE_IDENTICAL], newPositions[id][STATE_IDENTICAL]['row'] + 1);
+            NUM_ROWS[STATE_UNIQUE] = Math.max(NUM_ROWS[STATE_UNIQUE], newPositions[id][STATE_UNIQUE]['row'] + 1);
+            NUM_ROWS[STATE_SIMILAR] = Math.max(NUM_ROWS[STATE_SIMILAR], newPositions[id][STATE_SIMILAR]['row'] + 1);
+            NUM_ROWS[STATE_COMPACT] = Math.max(NUM_ROWS[STATE_COMPACT], newPositions[id][STATE_COMPACT]['row'] + 1);
         } // end of for each item in group
     }) // end of for each group
+
+    //udapte positions to the values
+    positions = newPositions;
 }// end of calculatePositions
 
 /*
@@ -709,7 +720,7 @@ const animateIdentical = (toState, jumpToPosition) => {
             for (let j = 0; j < set.length; j++) {
                 let checkID = set[j];
 
-                if (items[checkID].isShadowed)
+                if (items[checkID]?.isShadowed)
                     set = set.concat(getShadows(checkID));
 
             }
@@ -731,7 +742,7 @@ const animateUnique = (toState, jumpToPosition) => {
         let id = unique1[i];
         let item = items[id];
 
-        if (item.isShadowed)
+        if (item?.isShadowed)
             tempUnique1 = tempUnique1.concat(getShadows(id));
     }
 
@@ -739,7 +750,7 @@ const animateUnique = (toState, jumpToPosition) => {
         let id = unique2[i];
         let item = items[id];
 
-        if (item.isShadowed)
+        if (item?.isShadowed)
             tempUnique2 = tempUnique2.concat(getShadows(id));
     }
 
@@ -792,7 +803,7 @@ const animateItem = (id, toState, duration) => {
 
     let animatedItem = document.getElementById(id);
 
-    let position = (toState !== undefined) ? offsetToPosition(positions[id][toState]) : offsetToPosition(positions[id]);
+    let position = offsetToPosition(positions[id][toState]);
 
     animatedItem.animate({
         left: `${position.x}px`,
@@ -843,14 +854,14 @@ const columnWidth = () => {
 }
 
 const rowHeight = () => {
-    return document.querySelectorAll('.backdrop td')[0].clientWidth / 5;
+    return 80;
 }
 
 // given offset information (which row/column), convert into (x,y) position info for css "top" and "left"
 const offsetToPosition = offset => {
     return {
-        x: offset.col * columnWidth() + 18,
-        y: (offset.row * rowHeight())
+        x: (offset.col * columnWidth()) + 20,
+        y: offset.row * rowHeight()
     };
 }
 
@@ -929,10 +940,10 @@ export const adjustBackdrop = toState => {
         let tds = [];
 
         for (let j = 0; j < NUM_COLUMNS; j++) {
-            tds.push(<td />)
+            tds.push(<td key={`td-reconciliaiton-${i}-${j}`} />)
         }
 
-        trs.push(<tr>{tds}</tr>);
+        trs.push(<tr key={`tr-reconciliaiton-${i}`}>{tds}</tr>);
     }
 
     return trs;
@@ -991,13 +1002,14 @@ const adjustAnimationControls = state => {
         delete inactive[STATE_SIMILAR];
     }
 
-    for (let stateIndex in inactive) {
+    // for (let stateIndex in inactive) {
+    Object.keys(inactive).forEach(stateIndex => {
         elements = document.getElementsByClassName(stateIndexToName(parseInt(stateIndex)));
 
         for (let i = 0; i < elements.length; i++) {
             elements[i].classList.add('inactive')
         }
-    }
+    })
 
     elements = document.getElementsByClassName(stateIndexToName(state));
 
@@ -1125,8 +1137,6 @@ const mouseoverHandler = id => e => {
 
     e.preventDefault();
 
-    let item = items[id];
-
     // hover appropriate item(s)
     let toHover = getRelatedSet(id, multigroup);
 
@@ -1135,44 +1145,16 @@ const mouseoverHandler = id => e => {
         hoverSet[hoverID] = true;
         hoverItem(hoverID, true);
     }
-
-    for (let attributeName in attributes) {
-        if (attributeName in item.attributes) {
-            let values = item.attributes[attributeName];
-            let valuesString = "";
-
-            if (values.length > 1) {
-                values = item.attributes[attributeName];
-
-                for (let i = 0; i < values.length; i++) {
-
-                    if (attributeName === ATTR_SUBITEM) {
-                        let subItem = values[i];
-                        let dose = subItem
-                            .attributes[ATTR_DOSE];
-
-                        valuesString += subItem.name + (dose ? " " + subItem.attributes[ATTR_DOSE] : "");
-                    } else
-                        valuesString += values[i];
-
-                    valuesString += ", ";
-                }
-                valuesString = valuesString.slice(0, -2);
-            } else
-                valuesString = values.toString();
-
-        }
-    }
-
 }
 
 const mouseoutHandler = e => {
 
     e.preventDefault();
 
-    for (let id in hoverSet) {
+    // for (let id in hoverSet) {
+    Object.keys(hoverSet).forEach(id => {
         hoverItem(id, false);
-    }
+    })
 
     hoverSet = {};
 }
@@ -1182,6 +1164,9 @@ const hoverItem = (id, mouseover) => {
 
     let item = items[id];
     let hoverItem = document.getElementById(id);
+
+    if (!hoverItem)
+        return
 
     if (mouseover) {
         hoverItem.classList.add("item-hover");
@@ -1211,9 +1196,10 @@ export const resetDecisions = () => {
 const resetLinkActionFlags = () => {
     linkAction = {};
 
-    for (let id in items) {
+    // for (let id in items) {
+    Object.keys(items).forEach(id => {
         linkAction[id] = true;
-    }
+    })
 }
 
 const processItem = (id, dst, noLink) => {
@@ -1297,8 +1283,9 @@ const processColumn = event => {
         // only act on items in this particular column and only act on undecided ones
         const item = document.getElementById(`${id}`);
 
-        if (data.dst === 'undecided' || item.classList.contains('undecided'))
-            processItem(id, data.dst, index !== LIST_IDENTICAL_INDEX);
+        if (item)
+            if (data.dst === 'undecided' || item.classList.contains('undecided'))
+                processItem(id, data.dst, index !== LIST_IDENTICAL_INDEX);
 
     }
 

@@ -1,3 +1,5 @@
+import { isEmpty } from 'lodash';
+
 let dataset = "";
 let shadows = {};
 export let items = {};
@@ -17,12 +19,12 @@ const DEFAULT_GROUP = "";
 const sortBy = "__ATTR_NAME__";
 const ATTR_ROUTE = "__ATTR_ROUTE__";
 export const ATTR_NAME = "__ATTR_NAME__";
-export const ATTR_DOSE = "__ATTR_DOSE__";
+const ATTR_DOSE = "__ATTR_DOSE__";
 const ATTR_DIAGNOSES = "__ATTR_DIAGNOSES__";
 const ATTR_FREQUENCY = "__ATTR_FREQUENCY__";
 export const RECORDED_NAME = "recorded";
 export let displayName = RECORDED_NAME;
-export const ATTR_SUBITEM = "__ATTR_SUBITEM__";
+const ATTR_SUBITEM = "__ATTR_SUBITEM__";
 const ATTR_DRUG_CLASS = "__ATTR_DRUG_CLASS__";
 const ATTR_DATE_STARTED = "__ATTR_DATE_STARTED__";
 const ATTR_INSTRUCTIONS = "__ATTR_INSTRUCTIONS__";
@@ -30,7 +32,6 @@ const ATTR_TYPE_NUMERIC = "__ATTR_TYPE_NUMERIC__";
 const ATTR_TYPE_GENERAL = "__ATTR_TYPE_GENERAL__";
 export let afterAction = "__AFTER_ACTION_GRAYOUT__";
 const ATTR_TYPE_CATEGORICAL = "__ATTR_TYPE_CATEGORICAL__";
-export const DATASET_DEFAULT = "__DATASET_APPENDECTOMY__";
 export const AFTER_ACTION_REMOVE = "__AFTER_ACTION_REMOVE__";
 
 export const list1 = {
@@ -45,15 +46,20 @@ export const list2 = {
     source: []
 };
 
+// 'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug _classes,diagnoses'
 export const getRelationShips = data => {
 
     const dataArray = data.split('\n');
 
-    const dataArrayFiltered = dataArray.map(val => {
-        let n = val.split(',')
-        //remove id, origin AND drug classes,diagnoses
-        return n.splice(2, 8).join(',')
-    })
+    let dataArrayFiltered = [];
+
+    for (let i = 0; i < dataArray.length; i++) {
+        if (i > 0) {
+            const val = dataArray[i].split(',')
+            //remove id, origin AND drug_classes,diagnoses
+            dataArrayFiltered.push(val.splice(2, 8).join(','));
+        }
+    }
 
     let newSimilar = [];
     let newUnique1 = [];
@@ -69,7 +75,7 @@ export const getRelationShips = data => {
 
         for (let i = 0; i < currentArrayVal.length; i++) {
 
-            //IDENTICAL
+            // IDENTICAL
             if (currentArrayVal[i].indexOf(nextValue) !== -1) {
                 identicalIds.push(i);
                 identicalIds.push(index);
@@ -77,7 +83,7 @@ export const getRelationShips = data => {
                 newIdentical.push([i, index]);
             }
 
-            //SIMILAR
+            // SIMILAR
             else {
                 let currentMedInfo = currentArrayVal[i].split(',');
                 let nextMedInfo = nextValue.split(',');
@@ -87,9 +93,9 @@ export const getRelationShips = data => {
                 let similarDetails = false;
 
                 // GET SIMILAR NAME (index 0,1,2)
-                if (currentMedInfo[0] === nextMedInfo[0] || currentMedInfo[1] === nextMedInfo[1] || currentMedInfo[2] === nextMedInfo[2]) {
+                if (currentMedInfo[0] === nextMedInfo[0] || currentMedInfo[1] === nextMedInfo[1] || currentMedInfo[2] === nextMedInfo[2])
                     similarName = true;
-
+                else {
                     if (!differences.find(val => val === ATTR_NAME))
                         differences.push(ATTR_NAME)
                 }
@@ -98,21 +104,27 @@ export const getRelationShips = data => {
                 if (currentMedInfo[3] === nextMedInfo[3] || currentMedInfo[4] === nextMedInfo[4] || currentMedInfo[5] === nextMedInfo[5]) {
                     similarDetails = true;
 
-                    if (currentMedInfo[3] === nextMedInfo[3])
+                    //different dosage
+                    if (currentMedInfo[3] !== nextMedInfo[3])
                         if (!differences.find(val => val === ATTR_DOSE))
                             differences.push(ATTR_DOSE)
 
-                    if (currentMedInfo[5] === nextMedInfo[5])
+                    //different frequency
+                    if (currentMedInfo[5] !== nextMedInfo[5])
                         if (!differences.find(val => val === ATTR_FREQUENCY))
                             differences.push(ATTR_FREQUENCY)
                 }
 
                 if (similarDetails && similarName)
                     if (!newSimilar.find(val => val.items[0] === i && val.items[1] === index)) {
+
                         similarIds.push(i);
                         similarIds.push(index);
 
-                        newSimilar.push({ items: [i, index], differences })
+                        newSimilar.push({
+                            differences,
+                            items: [i, index],
+                        })
                     }
             }
         }
@@ -134,12 +146,28 @@ export const getRelationShips = data => {
                 newUnique2.push(id);
     }
 
-    // console.log('newUnique1',newUnique1)
-    // console.log('newUnique2',newUnique2)
-    // console.log('newSimilar',newSimilar)
-    // console.log('newIdentical',newIdentical)
-
     return { unique1: newUnique1, unique2: newUnique2, similar: newSimilar, identical: newIdentical };
+}
+
+export const getStructureData = meds => {
+
+    if (!meds || meds.length === 0)
+        return '';
+
+    return meds.map((med, key) => {
+        const isLast = meds.length - 1 === key;
+
+        const { name, route, frequency, dosage, dosageUnit, medType, Med: { ingredients } } = med;
+
+        const origin = medType === 'HomeMed' ? 'list0' : 'list1';
+
+        const finalDosage = !isEmpty(dosage) ? dosage : '(No Dosage)';
+        const finalRoute = !isEmpty(route) ? route : '(No Route)';
+        const finalFrequency = !isEmpty(frequency) ? frequency : '(No Frequency)';
+
+        // 'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n'
+        return `${key},${origin},${name},${ingredients},${name},${finalDosage} ${dosageUnit.label},${finalRoute},${finalFrequency},none,none${!isLast ? '\n' : ''}`;
+    }).join('');
 }
 
 // expected column names of csv format - all items have these attributes given in the csv
@@ -148,12 +176,12 @@ let CSVC = {
     DOSE: "dose",
     ROUTE: "route",
     ORIGIN: "origin",
-    B_NAME: "brand name",
-    G_NAME: "generic name",
+    B_NAME: "brand_name",
+    G_NAME: "generic_name",
     DIAGNOSES: "diagnoses",
     FREQUENCY: "frequency",
-    R_NAME: "recorded name",
-    DRUG_CLASSES: "drug classes",
+    R_NAME: "recorded_name",
+    DRUG_CLASSES: "drug_classes",
 };
 
 let DATASETS = {
@@ -169,7 +197,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,aspirin,aspirin,Bayer,81 mg,PO,daily,"non-steroidal anti-inflammatory drug,analgesic,antiplatelet,antipyretic",atherosclerotic vascular disease\n' +
             '1,list0,Chantix,varenicline,Chantix,81 mg,PO,daily,antismoking,nicotine dependence\n' +
             '2,list0,Lipitor,atorvastatin,Lipitor,20 mg,PO,daily,anticholesterol,hypercholesterolemia\n' +
@@ -201,7 +229,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,acetaminophen,acetaminophen,Tylenol,650 mg,PO,q4h prn,"analgesic,antipyretic",pain\n' +
             '1,list0,Aldactone,spironolactone,Aldactone,100 mg,PO,daily,antihypertensive,hypertension\n' +
             '2,list0,Amaryl,glimepiride,Amaryl,4 mg,PO,daily,antidiabetic,diabetes\n' +
@@ -252,7 +280,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,Coreg,carvedilol,Coreg,25 mg,PO,BID,antihypertensive,hypertension\n' +
             '1,list0,HCTZ,hydrochlorothiazide,Hydrodiuril,25 mg,PO,daily,"diuretic,antihypertensive",congestive heart failure\n' +
             '2,list0,Coumadin,warfarin,Coumadin,5 mg,PO,daily,anticoagulant,thrombosis\n' +
@@ -300,7 +328,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,Abilify,aripiprazole,Abilify,5 mg,PO,daily,"antipsychotic,antidepressant",depression\n' +
             '1,list0,Advair,salmeterol + fluticasone,Advair,250 / 50 mg,PO,BID,bronchodilator,COPD\n' +
             '2,list0,Bactrim,trimethoprim + sulfamethoxazole,Bactrim,2 tablets,PO,q12h,antibiotic,pneumonia\n' +
@@ -372,7 +400,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,dabigatran,dabigatran,Pradaxa,150 mg,PO,BID,anticoagulant,atrial fibrillation\n' +
             '1,list0,Zestoretic,hydrochlorothiazide + lisinopril,Zestoretic,20 / 12.5 mg,PO,daily,"antihypertensive,diuretic",hypertension\n' +
             '2,list0,metformin,metformin,Glucophage,850 mg,PO,daily,antidiabetic,diabetes\n' +
@@ -428,7 +456,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,Acetaminophen,Acetaminophen,Acetaminophen,325 mg,PO,q6h,"analgesic,antipyretic",\n' +
             '1,list0,Darbepoetin,Darbepoetin,Darbepoetin,60 mg,SC,qFriday,ESA,\n' +
             '2,list0,Calcitrol,Calcitrol,Calcitrol,0.25 mg,PO,daily,supplement,\n' +
@@ -472,7 +500,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,Acetaminophen,Acetaminophen,Acetaminophen,325 mg,PO,q4h,"analgesic,antipyretic",\n' +
             '1,list0,Tylenol,Tylenol,Tylenol,325 mg,PO,q6h,"analgesic,antipyretic",\n' +
             '2,list0,Zyrtec,Zyrtec,Zyrtec,10 mg,PO,daily,"antihistamine",\n' +
@@ -517,7 +545,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,Aldactone,spironolactone,Aldactone,100 mg,PO,daily,"antihypertensive",hypertension\n' +
             '1,list0,Avelox,moxifloxacin,Avelox,400 mg,PO,daily,"antibiotic",pneumonia\n' +
             '2,list0,Ambien,zolpidem,Ambien,10 mg,PO,qHS prn,"sedative",insomnia\n' +
@@ -583,7 +611,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,dabigatran,dabigatran,Pradaxa,150 mg,PO,BID,anticoagulant,atrial fibrillation\n' +
             '1,list0,Zestoretic,hydrochlorothiazide + lisinopril,Zestoretic,20 / 12.5 mg,PO,daily,"antihypertensive,diuretic",hypertension\n' +
             '2,list0,metformin,metformin,Glucophage,850 mg,PO,daily,antidiabetic,diabetes\n' +
@@ -647,7 +675,7 @@ let DATASETS = {
 
         // item data
         csv:
-            'id,origin,recorded name,generic name,brand name,dose,route,frequency,drug classes,diagnoses\n' +
+            'id,origin,recorded_name,generic_name,brand_name,dose,route,frequency,drug_classes,diagnoses\n' +
             '0,list0,acetaminophen,acetaminophen,Tylenol,650 mg,PO,q4h prn,"analgesic,antipyretic",pain\n' +
             '1,list0,Aldactone,spironolactone,Aldactone,100 mg,PO,daily,antihypertensive,hypertension\n' +
             '2,list0,Amaryl,glimepiride,Amaryl,4 mg,PO,daily,antidiabetic,diabetes\n' +
@@ -673,6 +701,10 @@ let DATASETS = {
             '22,list1,spironolactone,spironolactone,Aldactone,100 mg,PO,qAM,antihypertensive,hypertension',
     }, // end of CHF1_M
 };
+
+export const setDataSet = newDataSets => {
+    DATASETS = newDataSets
+}
 
 export const init = dataset => {
     resetState();
@@ -712,7 +744,8 @@ export const viewDataModel = (sort, filter) => {
 
     // get or hide shadows
     if (multigroup && groupBy) {
-        for (let shadowID in shadows) {
+        // for (let shadowID in shadows) {
+        Object.keys(shadows).forEach(shadowID => {
             let shadow = shadows[shadowID];
             if (groupBy in shadow.attributes && shadow.attributes[groupBy].length > 1 && shadow.attributes[groupBy][shadow.groupByOffset]) {
                 // if shadow should be shown, update accordingly:
@@ -727,12 +760,12 @@ export const viewDataModel = (sort, filter) => {
                 // otherwise, hide the shadow
                 hidden[shadowID] = true;
             }
-        }
+        })
     } else {
         // no multigroup + groupBy = no shadows
-        for (let shadowID in shadows) {
+        Object.keys(shadows).forEach(shadowID => {
             hidden[shadowID] = true;
-        }
+        })
     }
 
     // sort data
@@ -761,7 +794,7 @@ export const viewDataModel = (sort, filter) => {
         "unique2": []
     };
 
-    for (let i in relevantIds) {
+    Object.keys(relevantIds).forEach(i => {
         let id = relevantIds[i];
         let item = items[id];
 
@@ -811,7 +844,7 @@ export const viewDataModel = (sort, filter) => {
             }
         } // else in similar
 
-    }// end of grouping ids
+    })// end of grouping ids
 
     // delete default group if unused (all other groups only exist if created)
     if (groups[DEFAULT_GROUP].length === 0) {
@@ -912,9 +945,9 @@ export const getRelated = (id, includeShadows) => {
         // convert results into array format
         let related = [];
 
-        for (let hashedID in hash) {
+        Object.keys(hash).forEach(hashedID => {
             related.push(hashedID);
-        }
+        })
 
         return related;
     }
@@ -988,9 +1021,12 @@ export const populateLists = dataset => {
     // convert from array of arrays into array of objects
     let extractedItems = arrOfArrsToArrOfObjects(csv_data);
 
+    debugger
     // for each item, save the attributes into a ListItem object
-    for (let csvi = 0; csvi < extractedItems.length; csvi++) {
-        let obj = extractedItems[csvi];
+    for (let i = 0; i < extractedItems.length; i++) {
+
+        let obj = extractedItems[i];
+
         objId = parseInt(obj[CSVC.ID][0]);
 
         name = {
@@ -1031,13 +1067,13 @@ const populateShadows = () => {
     let potentialGroups = {};
     let potentialGroupByAttributes = [];
 
-    for (let attribute in attributes) {
+    Object.keys(attributes).forEach(attribute => {
         if (attributes[attribute].type === ATTR_TYPE_CATEGORICAL)
             potentialGroupByAttributes.push(attribute);
 
-    }
+    })
 
-    for (let id in items) {
+    Object.keys(items).forEach(id => {
         for (let i = 0; i < potentialGroupByAttributes.length; i++) {
             let attributes = items[id].attributes;
             let attribute = potentialGroupByAttributes[i];
@@ -1055,16 +1091,17 @@ const populateShadows = () => {
                 }
             }
         }
-    }
+    })
 
     // slight optimization: remove 1-item groups when multigrouping
-    for (let groupByAttribute in potentialGroups) {
+    // for (let groupByAttribute in potentialGroups) {
+    Object.keys(potentialGroups).forEach(groupByAttribute => {
         if (potentialGroups[groupByAttribute].length < 2)
             delete potentialGroups[groupByAttribute];
-    }
+    })
 
     // create shadows
-    for (let id in items) {
+    Object.keys(items).forEach(id => {
         let item = items[id];
 
         // originals will always be associated with the primary group
@@ -1075,7 +1112,8 @@ const populateShadows = () => {
         item.isShadowed = false;
 
         // search for potential shadows
-        for (let attributeName in attributes) {
+        // for (let attributeName in attributes) {
+        Object.keys(attributes).forEach(attributeName => {
             let attribute = attributes[attributeName];
 
             if (attribute.type === ATTR_TYPE_CATEGORICAL) {
@@ -1132,8 +1170,8 @@ const populateShadows = () => {
                         }
                 }
             }
-        }
-    }
+        })
+    })
 }
 
 const detectAttributes = () => {
@@ -1183,10 +1221,10 @@ const detectAttributes = () => {
  */
 const detectRelationships = dataset => {
 
-    unique1 = DATASETS[dataset].unique1;
-    unique2 = DATASETS[dataset].unique2;
-    let tempIdentical = DATASETS[dataset].identical;
-    let tempSimilar = DATASETS[dataset].similar;
+    unique1 = DATASETS[dataset]?.unique1 ?? [];
+    unique2 = DATASETS[dataset]?.unique2 ?? [];
+    let tempIdentical = DATASETS[dataset]?.identical ?? [];
+    let tempSimilar = DATASETS[dataset]?.similar ?? [];
 
     if (tempIdentical || tempSimilar) {
 
@@ -1216,7 +1254,7 @@ const detectDrugClasses = () => {
 
     let finalDrugClasses = {};
 
-    // drug classes have ids like: "dc0"
+    // drug_classes have ids like: "dc0"
     let i = 0;
 
     drugClassSet = {};
@@ -1255,7 +1293,7 @@ const detectDiagnoses = () => {
     let tempDiagnoses = {};
     // hash to remove duplicates
     let i = 0;
-    // drug classes have ids like: "dc0"
+    // drug_classes have ids like: "dc0"
 
     diagnosisSet = {};
 
@@ -1382,6 +1420,8 @@ const ListItem = (id, listID, name, attributes) => {
 
     visible.isModified = false;
 
+    visible.activeIngredients = name.generic;
+
     return visible;
 }
 
@@ -1415,11 +1455,11 @@ const CSVToArray = (strData, strDelimiter) => {
 
     // Create an array to hold our individual pattern
     // matching groups.
-    let arrMatches = null;
+    let arrMatches = objPattern.exec(strData);
 
     // Keep looping over the regular expression matches
     // until we can no longer find a match.
-    while (arrMatches = objPattern.exec(strData)) {
+    while (arrMatches) {
 
         // Get the delimiter that was found.
         let strMatchedDelimiter = arrMatches[1];
@@ -1437,14 +1477,11 @@ const CSVToArray = (strData, strDelimiter) => {
         // let's check to see which kind of value we
         // captured (quoted or unquoted).
         let strMatchedValue;
+
         if (arrMatches[2])
             // We found a quoted value. When we capture
             // this value, unescape any double quotes.
-            strMatchedValue = arrMatches[2].replace(
-                new RegExp("\"\"", "g"),
-                "\""
-            );
-
+            strMatchedValue = arrMatches[2].replace(new RegExp("\"\"", "g"), "\"");
         else
             // We found a non-quoted value.
             strMatchedValue = arrMatches[3];
@@ -1452,6 +1489,8 @@ const CSVToArray = (strData, strDelimiter) => {
         // Now that we have our value string, let's add
         // it to the data array.
         arrData[arrData.length - 1].push(strMatchedValue);
+
+        arrMatches = objPattern.exec(strData);
     }
 
     // Return the parsed data.

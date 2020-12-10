@@ -25,7 +25,7 @@ const Reconciliation = () => {
 
     return <div id="reconciliation" className="content-text">
 
-        <button onClick={() => changeState(4)}>Start auto animation</button>
+        <button onClick={() => changeState(4)}>Animate</button>
         <button onClick={() => changeState(1)}>identical</button>
         <button onClick={() => changeState(2)}>unique</button>
         <button onClick={() => changeState(3)}>similar</button>
@@ -43,7 +43,7 @@ const Reconciliation = () => {
             <div className="scrolling_content scroll-y">
                 <table className="backdrop backdrop-body">
                     <tbody>
-                    {adjustBackdrop(0)}
+                        {adjustBackdrop(0)}
                     </tbody>
                 </table>
                 <div className="items">
